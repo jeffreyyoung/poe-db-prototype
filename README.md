@@ -3,7 +3,7 @@
 ### actions prompt
 
 ```
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@bc7c74a02d6a5e38069ba20dcf286f986ff714ee/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@a85cb9673073d53ea3f12f9a429db1b7f4f3648a/actions.js"
 
 
 setup({
