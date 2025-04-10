@@ -4,7 +4,7 @@ let globals = {
   onChange: null
 }
 
-export const setupState = ({ initialState, actions, onChange }) => {
+export const setup = ({ initialState, actions, onChange }) => {
   globals.state = intialState;
   globals.actions = actions;
   globals.onChange = onChange;
