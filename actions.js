@@ -5,7 +5,7 @@ let globals = {
 }
 
 export const setup = ({ initialState, actions, onChange }) => {
-  globals.state = intialState;
+  globals.state = initialState;
   globals.actions = actions;
   globals.onChange = onChange;
 }
