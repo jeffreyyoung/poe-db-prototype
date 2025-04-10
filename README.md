@@ -25,6 +25,8 @@ action("addTodo", { text: "buy an apple" })
 
 ### yjs
 
+https://poe.com/s/5pWL906Csmb3rYTNxYR6
+
 ```
 import { ydoc } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@a85cb9673073d53ea3f12f9a429db1b7f4f3648a/yjs.js"
 
