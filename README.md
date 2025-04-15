@@ -1,6 +1,28 @@
 # poe-db-prototype
 
-### action_log
+### state
+```
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@5b41d0277662da4daf680e70190fe3d7ace162b0/synced-state.js"
+
+
+setup({
+   initialState: { todos: [] },
+   actions: {
+      addTodo(payload, state) {
+          state.todos.push(payload)
+      }
+   },
+   onChange(curState) {
+       // update ui
+   },
+   channelName: "unique-hardcoded-id-for-this-application"
+})
+
+action("addTodo", { text: "buy an apple" })
+```
+
+
+### action_log (no sync)
 
 https://poe.com/s/6ztrjgOtuxU1TrGorFAL
 
