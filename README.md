@@ -18,44 +18,33 @@ No installation required. Just include the `repli-cache.js` file in your project
 
 ### Basic Setup
 
-```javascript
-import RepliCache from './repli-cache.js';
+```
 
-// Define mutators (functions that modify data)
-const mutators = {
-  async addTodo(args, state) {
-    const [todo] = args;
-    const todos = state.todos || [];
-    
-    return {
-      todos: [...todos, {
-        id: Date.now().toString(),
-        text: todo.text,
-        completed: false,
-        createdAt: new Date().toISOString()
-      }]
-    };
+Please create a synced drawing application using my library.  It should render user's cursors.  Here's an example:
+
+~~~
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@2581802cfcf36743268130698da02f261cec517b/replicache.js#L10"
+
+const rep = new Replicache({
+  name: "someUniqueApplicationName",
+  spaceID: "someUniqueApplicationName" // this is important!!!
+  mutators: {
+    async addTodo(tx, data) {
+      await tx.set("todos/"+data.id, data);
+    }
   }
-};
+})
 
-// Create a Repli-Cache instance
-const rep = new RepliCache({
-  name: 'todo-app',
-  mutators,
-  pullURL: 'http://your-api.com/pull',
-  pushURL: 'http://your-api.com/push',
-  pullInterval: 5000,
-  pushInterval: 5000
-});
-
-// Subscribe to data changes
-rep.subscribe((data) => {
-  console.log('Data updated:', data);
-  updateUI(data);
-});
+rep.subscribe((tx) => {
+  const todos = await tx.scan({ prefix: "todo/" }).entries().toArray();
+  return todos
+}, (todos) => {
+  renderUI(todos);
+})
 
 // Execute a mutator
-await rep.mutate('addTodo', [{ text: 'Buy groceries' }]);
+await rep.mutate.addTodo({ id: Date.now(), text: "buy food" })
+~~~
 ```
 
 ### API Reference
