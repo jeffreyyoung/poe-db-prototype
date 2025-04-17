@@ -24,10 +24,27 @@ export async function pullFromServer(spaceName: string, afterMutationId: number)
     return data;
 }
 
+function combineMutations(mutations: Mutation[]): Mutation {
+  const kvUpdates = new Map<string, Mutation["operations"][number]>();
+  for (const mutation of mutations) {
+    for (const operation of mutation.operations) {
+      kvUpdates.set(operation.key, operation);
+    }
+  }
+  const mutation: Mutation = {
+    id: Math.floor(Math.random()*9999999),
+    name: "stuf",
+    args: { "hi": "bye"} as any,
+    operations: Array.from(kvUpdates.values())
+  }
+  return mutation;
+}
+
 export async function pushToServer(spaceName: string, mutations: Mutation[]): Promise<PushResponse> {
+
     const response = await fetch(`${baseURL}/push/${spaceName}`, {
         method: 'POST',
-        body: JSON.stringify({ mutations }),
+        body: JSON.stringify({ mutations: [combineMutations(mutations)] }),
     });
     if (!response.ok) {
         throw new Error(`Failed to push to ${spaceName}: ${response.statusText}`);
