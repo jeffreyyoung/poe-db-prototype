@@ -33,6 +33,8 @@ rep.subscribe(async (tx) => {
 # State reducer library with state broadcasting
 
 ~~~~
+Create a todo list app using this library.
+~~~
 import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/synced-state.js"
 
 
@@ -50,12 +52,15 @@ setup({
 })
 
 action("addTodo", { text: "buy an apple" })
+~~~
 ~~~~
 
 
 # State reducer library
 
 ~~~~
+Create a todo list app using this library.
+~~~
 import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/actions.js"
 
 
@@ -72,11 +77,14 @@ setup({
 })
 
 action("addTodo", { text: "buy an apple" })
+~~~
 ~~~~
 
 # yJS library
 
 ~~~~
+Create a todo list app using this library.
+~~~
 import { ydoc } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@a85cb9673073d53ea3f12f9a429db1b7f4f3648a/yjs.js"
 
 // ydoc is a yjs doc
@@ -84,5 +92,6 @@ import { ydoc } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@
 // mutate the doc like a regular yjs doc
 // implement your own updateUI function
 y.observe(updateUI)
+~~~
 ~~~~
 EOF
