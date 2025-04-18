@@ -3,7 +3,10 @@
 # Get the most recent commit hash
 COMMIT_HASH=$(git rev-parse HEAD)
 
-cat << EOF > prompt.md
+cat << EOF > README.md
+
+# Replicache
+~~~~
 Create a todo list app using my library.
 ~~~
 import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js"
@@ -24,6 +27,62 @@ rep.subscribe(async (tx) => {
 }, (todos) => {
   console.log(todos);
 })
-
 ~~~
+~~~~
+
+# State reducer library with state broadcasting
+
+~~~~
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/synced-state.js"
+
+
+setup({
+   initialState: { todos: [] },
+   actions: {
+      addTodo(payload, state) {
+          state.todos.push(payload)
+      }
+   },
+   onChange(curState) {
+       // update ui
+   },
+   channelName: "unique-hardcoded-id-for-this-application"
+})
+
+action("addTodo", { text: "buy an apple" })
+~~~~
+
+
+# State reducer library
+
+~~~~
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/actions.js"
+
+
+setup({
+   initialState: { todos: [] },
+   actions: {
+      addTodo(payload, state) {
+          state.todos.push(payload)
+      }
+   },
+   onChange(curState) {
+       // update ui
+   }
+})
+
+action("addTodo", { text: "buy an apple" })
+~~~~
+
+# yJS library
+
+~~~~
+import { ydoc } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@a85cb9673073d53ea3f12f9a429db1b7f4f3648a/yjs.js"
+
+// ydoc is a yjs doc
+// do not setup any providers or persistence.  It is already setup behind the scenes.
+// mutate the doc like a regular yjs doc
+// implement your own updateUI function
+y.observe(updateUI)
+~~~~
 EOF
