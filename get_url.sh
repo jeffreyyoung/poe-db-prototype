@@ -91,7 +91,7 @@ import { ydoc } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@
 // do not setup any providers or persistence.  It is already setup behind the scenes.
 // mutate the doc like a regular yjs doc
 // implement your own updateUI function
-y.observe(updateUI)
+ydoc.observe(updateUI)
 ~~~
 ~~~~
 EOF
