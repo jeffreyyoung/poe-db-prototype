@@ -1,15 +1,3 @@
-#!/bin/bash
-
-# Get the most recent commit hash
-COMMIT_HASH=$(git rev-parse HEAD)
-
-FULL_URL="https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js"
-
-# Output the URL with the commit hash
-echo "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js" > prompt.md
-
-
-cat > prompt.md << 'EOF'
 Create a todo list app using my library.
 ~~~
 import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js"
@@ -32,4 +20,3 @@ rep.subscribe(async (tx) => {
 })
 
 ~~~
-EOF
