@@ -56,6 +56,8 @@ export class Replicache {
    */
   pendingMutations = [];
   latestMutationId = 0;
+  pull;
+  push;
   /**
    * each time we run a subscription, we keep track of the keys that were accessed
    */
@@ -63,6 +65,8 @@ export class Replicache {
   options;
   constructor(options) {
     this.options = options;
+    this.pull = throttle(this.#doPull.bind(this), 300, true);
+    this.push = throttle(this.#doPush.bind(this), 300, true);
     this.#startPolling();
     this.#listenForPokes();
   }
@@ -78,6 +82,10 @@ export class Replicache {
     });
   }
   async #startPolling() {
+    if (typeof Deno !== "undefined") {
+      console.log("Skipping Ably subscription in test environment");
+      return;
+    }
     while (true) {
       await this.pull().catch((e) => {
         console.error("Error polling", e);
@@ -92,32 +100,21 @@ export class Replicache {
     return result;
   }
   async subscribe(queryCb, onQueryCbChanged) {
-    console.log("subscribe", queryCb, onQueryCbChanged);
     if (typeof queryCb !== "function") {
       throw new Error("queryCb must be a function");
     }
     if (typeof onQueryCbChanged !== "function") {
       throw new Error("onQueryCbChanged must be a function");
     }
-    console.log("added a subscription");
     this.#subscriptions.set(queryCb, { keysReadOnLastExecution: /* @__PURE__ */ new Set(), onQueryCbChanged });
     await this.#runAndUpdateSubscription(queryCb, /* @__PURE__ */ new Set());
     return () => {
-      console.log("removed a subscription");
       this.#subscriptions.delete(queryCb);
     };
   }
   #shouldNotifySubscription(observedKeys, changedKeys) {
-    if (observedKeys.size === 0) {
-      return true;
-    }
-    for (const key of observedKeys) {
-      if (!changedKeys.has(key)) {
-        return true;
-      }
-    }
     for (const key of changedKeys) {
-      if (!observedKeys.has(key)) {
+      if (observedKeys.has(key)) {
         return true;
       }
     }
@@ -131,7 +128,7 @@ export class Replicache {
     }
     try {
       const result = await cb(tx);
-      if (this.#shouldNotifySubscription(info.keysReadOnLastExecution, changedKeys)) {
+      if (this.#shouldNotifySubscription(/* @__PURE__ */ new Set([...info.keysReadOnLastExecution, ...tx._getReadKeys()]), changedKeys)) {
         info.onQueryCbChanged(result);
       }
     } catch (e) {
@@ -148,32 +145,23 @@ export class Replicache {
       this.#runAndUpdateSubscription(cb, changedKeys);
     }
   }
-  async pull() {
-    this.pullQueue = this.pullQueue.catch((e) => {
-      console.error("Error pulling", e);
-    }).then(async () => {
-      console.log("starting pull");
-      const result = await pullFromServer(this.options.spaceID, this.latestMutationId);
-      console.log("pulled", result), this.latestMutationId;
-      const patches = result.patches;
-      const changedKeys = /* @__PURE__ */ new Set();
-      console.log("patches", patches);
-      for (const patch of patches) {
-        if (patch.op === "set") {
-          console.log("adding patch", patch);
-          this.kv.set(patch.key, { value: patch.value, mutation_id: patch.mutationId });
-        } else if (patch.op === "del") {
-          this.kv.delete(patch.key);
-        }
-        changedKeys.add(patch.key);
+  async #doPull() {
+    console.log("starting pull");
+    const result = await pullFromServer(this.options.spaceID, this.latestMutationId);
+    const patches = result.patches;
+    const changedKeys = /* @__PURE__ */ new Set();
+    console.log("patches", patches);
+    for (const patch of patches) {
+      if (patch.op === "set") {
+        this.kv.set(patch.key, { value: patch.value, mutation_id: patch.mutationId });
+      } else if (patch.op === "del") {
+        this.kv.delete(patch.key);
       }
-      this.latestMutationId = result.lastMutationId;
-      this.pendingMutations = this.pendingMutations.filter((m) => m.status !== "pushed");
-      this.fireSubscriptions(changedKeys);
-    }).catch((e) => {
-      console.error("Error pulling", e);
-    });
-    return this.pullQueue;
+      changedKeys.add(patch.key);
+    }
+    this.latestMutationId = result.lastMutationId;
+    this.pendingMutations = this.pendingMutations.filter((m) => m.status !== "pushed");
+    this.fireSubscriptions(changedKeys);
   }
   _isPendingMutationCompleted(mutation) {
     return mutation.resultingMutationId !== null && mutation.resultingMutationId <= this.latestMutationId;
@@ -187,7 +175,6 @@ export class Replicache {
   }
   async #has(key) {
     const value = await this.#get(key);
-    console.log("has", key, value);
     return Boolean(value);
   }
   getMutationIdForKey(key) {
@@ -238,6 +225,9 @@ export class Replicache {
           resultKeys = resultKeys.slice(resultKeys.indexOf(startKey));
         }
         resultKeys = resultKeys.slice(0, limit);
+        for (const key of resultKeys) {
+          accessedKeys.add(key);
+        }
         return new ScanResult(resultKeys, (key) => tx.get(key));
       },
       _getReadKeys() {
@@ -308,27 +298,19 @@ export class Replicache {
       }
     });
   }
-  pushQueue = Promise.resolve();
-  async push() {
-    this.pushQueue = this.pushQueue.catch((e) => {
+  async #doPush() {
+    const mutations = this.pendingMutations.filter((m) => m.status !== "pushed");
+    mutations.forEach((m) => m.status = "pending");
+    if (mutations.length === 0) {
+      return;
+    }
+    try {
+      await pushToServer(this.options.spaceID, mutations);
+      mutations.forEach((m) => m.status = "pushed");
+    } catch (e) {
       console.error("Error pushing mutations", e);
-    }).then(async () => {
-      const mutations = this.pendingMutations.filter((m) => m.status !== "pushed");
-      mutations.forEach((m) => m.status = "pending");
-      if (mutations.length === 0) {
-        return;
-      }
-      try {
-        await pushToServer(this.options.spaceID, mutations);
-        mutations.forEach((m) => m.status = "pushed");
-      } catch (e) {
-        console.error("Error pushing mutations", e);
-        this.pendingMutations = this.pendingMutations.filter((mutation) => !mutations.includes(mutation));
-      }
-    }).catch((e) => {
-      console.error("Error pushing mutations", e);
-    });
-    return this.pushQueue;
+      this.pendingMutations = this.pendingMutations.filter((mutation) => !mutations.includes(mutation));
+    }
   }
 }
 class ScanResult {
@@ -432,5 +414,40 @@ class ScanResult {
 }
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+function throttle(func, ms, trailing = false) {
+  let lastCall = 0;
+  let timeoutId = null;
+  let currentPromise = null;
+  let isThrottled = false;
+  return async () => {
+    const now = Date.now();
+    const timeSinceLastCall = now - lastCall;
+    if (timeSinceLastCall < ms) {
+      isThrottled = true;
+      if (trailing) {
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
+        timeoutId = setTimeout(() => {
+          timeoutId = null;
+          lastCall = Date.now();
+          isThrottled = false;
+          currentPromise = func();
+          currentPromise.finally(() => {
+            currentPromise = null;
+          });
+        }, ms - timeSinceLastCall);
+      }
+      return currentPromise;
+    }
+    lastCall = now;
+    isThrottled = false;
+    currentPromise = func();
+    currentPromise.finally(() => {
+      currentPromise = null;
+    });
+    return currentPromise;
+  };
 }
 export default Replicache;

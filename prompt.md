@@ -1,6 +1,6 @@
 Create a todo list app using my library.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@$COMMIT_HASH/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@bd8f934820d50e0bd0bc9541e2c96883b05e1165/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithRandomNumbers", // all users of this app will share the same spaceID.  spaceID should be unique for each app.
