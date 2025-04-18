@@ -27,25 +27,11 @@ async function pullFromServer(spaceName, afterMutationId) {
   console.log("pulled", data);
   return data;
 }
-function combineMutations(mutations) {
-  const kvUpdates = /* @__PURE__ */ new Map();
-  for (const mutation2 of mutations) {
-    for (const operation of mutation2.operations) {
-      kvUpdates.set(operation.key, operation);
-    }
-  }
-  const mutation = {
-    id: Math.floor(Math.random() * 9999999),
-    name: "stuf",
-    args: { "hi": "bye" },
-    operations: Array.from(kvUpdates.values())
-  };
-  return mutation;
-}
 async function pushToServer(spaceName, mutations) {
+  // collapse mutations into a single mutation
   const response = await fetch(`${baseURL}/push/${spaceName}`, {
     method: "POST",
-    body: JSON.stringify({ mutations: [combineMutations(mutations)] })
+    body: JSON.stringify({ mutations })
   });
   if (!response.ok) {
     throw new Error(`Failed to push to ${spaceName}: ${response.statusText}`);

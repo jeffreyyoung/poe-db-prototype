@@ -1,4 +1,4 @@
-import { Replicache } from './replicache.js';
+import { Replicache } from './replicache.ts';
 
 // Initialize Replicache
 const rep = new Replicache({
