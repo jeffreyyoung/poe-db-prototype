@@ -1,9 +1,9 @@
 Create a todo list app using my library.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@045354ac6a5d0528f950f142e405e1e92a68cabd/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@bc3ccf9a1fb0bfd0703f3a9ec78bb5e751bb2b74/replicache.js"
 
 const rep = new Replicache({
-   spaceID: "appNameWithHardCodedRandomNumbers", // 
+   spaceID: "appNameWithRandomNumbers",
    mutators: {
     addTodo: async (tx, { title, id }) => {
       await tx.set(`todo/${id}`, { id, title, completed: false })
