@@ -347,13 +347,17 @@ export class Replicache {
 
   
   async #doPush() {
+    console.log("starting push", this.pendingMutations);
     const mutations = this.pendingMutations.filter(m => m.status !== "pushed")
     mutations.forEach(m => m.status = "pending");
     if (mutations.length === 0) {
       return;
     }
     try {
+      const start = Date.now();
       await pushToServer(this.options.spaceID, mutations);
+      const timeInMs = Date.now() - start;
+      console.log("pushed", mutations.length, "mutations in", timeInMs, "ms");
       mutations.forEach(m => m.status = "pushed");
     } catch (e) {
       console.error("Error pushing mutations", e);
