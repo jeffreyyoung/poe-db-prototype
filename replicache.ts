@@ -70,6 +70,8 @@ export class Replicache {
 
   latestMutationId = 0;
 
+  pull: () => Promise<unknown>;
+  push: () => Promise<unknown>;
   /**
    * each time we run a subscription, we keep track of the keys that were accessed
    */
@@ -81,6 +83,8 @@ export class Replicache {
   options: { spaceID: string, mutators: Record<string, (tx: ReturnType<typeof Replicache.prototype.createWriteTransaction>, params: any) => Promise<any>> };
   constructor(options: typeof Replicache.prototype.options) {
     this.options = options;
+    this.pull = throttle(this.#doPull.bind(this), 300, true);
+    this.push = throttle(this.#doPush.bind(this), 300, true);
     this.#startPolling();
     this.#listenForPokes();
   }
@@ -97,11 +101,12 @@ export class Replicache {
       this.pull();
     });
   }
-  
-
-
 
   async #startPolling() {
+    if (typeof Deno !== 'undefined') {
+      console.log("Skipping Ably subscription in test environment");
+      return;
+    }
     while (true) {
       await this.pull().catch((e) => {
         console.error("Error polling", e);
@@ -119,34 +124,22 @@ export class Replicache {
   }
 
   async subscribe(queryCb: (tx: ReturnType<typeof Replicache.prototype.createReadTransaction>) => Promise<any>, onQueryCbChanged: (res: any) => void) {
-    console.log("subscribe", queryCb, onQueryCbChanged);
     if (typeof queryCb !== 'function') {
       throw new Error("queryCb must be a function");
     }
     if (typeof onQueryCbChanged !== 'function') {
       throw new Error("onQueryCbChanged must be a function");
     }
-    console.log("added a subscription");
     this.#subscriptions.set(queryCb, { keysReadOnLastExecution: new Set(), onQueryCbChanged });
     await this.#runAndUpdateSubscription(queryCb, new Set());
     return () => {
-      console.log("removed a subscription");
       this.#subscriptions.delete(queryCb);
     }
   }
 
   #shouldNotifySubscription(observedKeys: Set<string>, changedKeys: Set<string>) {
-    if (observedKeys.size === 0) {
-      return true;
-    }
-
-    for (const key of observedKeys) {
-      if (!changedKeys.has(key)) {
-        return true;
-      }
-    }
     for (const key of changedKeys) {
-      if (!observedKeys.has(key)) {
+      if (observedKeys.has(key)) {
         return true;
       }
     }
@@ -162,7 +155,7 @@ export class Replicache {
     try {
       // check if sets are equal
       const result = await cb(tx);
-      if (this.#shouldNotifySubscription(info.keysReadOnLastExecution, changedKeys)) {
+      if (this.#shouldNotifySubscription(new Set([...info.keysReadOnLastExecution, ...tx._getReadKeys()]), changedKeys)) {
         info.onQueryCbChanged(result);
       }
     } catch (e) {
@@ -182,30 +175,23 @@ export class Replicache {
     }
   }
 
-  async pull() {
-    this.pullQueue = this.pullQueue.catch((e) => { console.error("Error pulling", e);}).then(async () => {
-      console.log("starting pull");
-      const result = await pullFromServer(this.options.spaceID, this.latestMutationId);
-      console.log("pulled", result), this.latestMutationId;
-      const patches = result.patches;
-      const changedKeys = new Set<string>();
-      console.log("patches", patches);
-      for (const patch of patches) {
-        if (patch.op === 'set') {
-          console.log("adding patch", patch);
-          this.kv.set(patch.key, { value: patch.value, mutation_id: patch.mutationId })
-        } else if (patch.op === 'del') {
-          this.kv.delete(patch.key);
-        }
-        changedKeys.add(patch.key);
+  async #doPull() {
+    console.log("starting pull");
+    const result = await pullFromServer(this.options.spaceID, this.latestMutationId);
+    const patches = result.patches;
+    const changedKeys = new Set<string>();
+    console.log("patches", patches);
+    for (const patch of patches) {
+      if (patch.op === 'set') {
+        this.kv.set(patch.key, { value: patch.value, mutation_id: patch.mutationId })
+      } else if (patch.op === 'del') {
+        this.kv.delete(patch.key);
       }
-      this.latestMutationId = result.lastMutationId;
-      this.pendingMutations = this.pendingMutations.filter(m => m.status !== "pushed");
-      this.fireSubscriptions(changedKeys);
-    }).catch((e) => {
-      console.error("Error pulling", e);
-    });
-    return this.pullQueue;
+      changedKeys.add(patch.key);
+    }
+    this.latestMutationId = result.lastMutationId;
+    this.pendingMutations = this.pendingMutations.filter(m => m.status !== "pushed");
+    this.fireSubscriptions(changedKeys);
   }
 
   _isPendingMutationCompleted(mutation: { resultingMutationId: number | null }) {
@@ -222,7 +208,6 @@ export class Replicache {
 
   async #has(key: string) {
     const value = await this.#get(key);
-    console.log("has", key, value);
     return Boolean(value);
   }
 
@@ -279,6 +264,9 @@ export class Replicache {
           resultKeys = resultKeys.slice(resultKeys.indexOf(startKey));
         }
         resultKeys = resultKeys.slice(0, limit);
+        for (const key of resultKeys) {
+          accessedKeys.add(key);
+        }
         return new ScanResult(resultKeys, (key) => tx.get(key));
       },
       _getReadKeys() {
@@ -357,29 +345,22 @@ export class Replicache {
     });
   }
 
-  pushQueue = Promise.resolve();
   
-  async push() {
-    this.pushQueue = this.pushQueue.catch((e) => { console.error("Error pushing mutations", e);}).then(async () => {
-      const mutations = this.pendingMutations.filter(m => m.status !== "pushed")
-      mutations.forEach(m => m.status = "pending");
-      if (mutations.length === 0) {
-        return;
-      }
-      try {
-        await pushToServer(this.options.spaceID, mutations);
-        mutations.forEach(m => m.status = "pushed");
-      } catch (e) {
-        console.error("Error pushing mutations", e);
-        // roll back the mutations since this errored...
-        // in real world we would retry
-        this.pendingMutations = this.pendingMutations.filter(mutation => !mutations.includes(mutation));
-      }
-    }).catch((e) => {
-      // todo: retry
+  async #doPush() {
+    const mutations = this.pendingMutations.filter(m => m.status !== "pushed")
+    mutations.forEach(m => m.status = "pending");
+    if (mutations.length === 0) {
+      return;
+    }
+    try {
+      await pushToServer(this.options.spaceID, mutations);
+      mutations.forEach(m => m.status = "pushed");
+    } catch (e) {
       console.error("Error pushing mutations", e);
-    });
-    return this.pushQueue;
+      // roll back the mutations since this errored...
+      // in real world we would retry
+      this.pendingMutations = this.pendingMutations.filter(mutation => !mutations.includes(mutation));
+    }
   }
 }
 
@@ -498,6 +479,55 @@ class ScanResult {
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+function throttle<T>(func: () => Promise<T>, ms: number, trailing = false) {
+  let lastCall = 0;
+  let timeoutId: number | null = null;
+  let currentPromise: Promise<T> | null = null;
+  let isThrottled = false;
+  
+  return async () => {
+    const now = Date.now();
+    const timeSinceLastCall = now - lastCall;
+    
+    // If we're within the throttle period
+    if (timeSinceLastCall < ms) {
+      isThrottled = true;
+      
+      // If trailing is enabled, schedule a call after the throttle period
+      if (trailing) {
+        // Clear any existing timeout
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
+        
+        // Set a new timeout to call the function after the throttle period
+        timeoutId = setTimeout(() => {
+          timeoutId = null;
+          lastCall = Date.now();
+          isThrottled = false;
+          currentPromise = func();
+          currentPromise.finally(() => {
+            currentPromise = null;
+          });
+        }, ms - timeSinceLastCall) as unknown as number;
+      }
+      
+      // Return the current promise if it exists, otherwise null
+      return currentPromise;
+    }
+    
+    // If we're outside the throttle period, call the function immediately
+    lastCall = now;
+    isThrottled = false;
+    currentPromise = func();
+    currentPromise.finally(() => {
+      currentPromise = null;
+    });
+    return currentPromise;
+  }
 }
 
 

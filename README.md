@@ -20,10 +20,10 @@ No installation required. Just include the `repli-cache.js` file in your project
 
 ```
 
-Please create a synced drawing application using my library.  It should render user's cursors.  Here's an example:
+Please create a synced drawing application using my library.  Update the user's cursor position every 300ms:
 
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@2581802cfcf36743268130698da02f261cec517b/replicache.js#L10"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@1b5a876e3ca1b494356395e569d253317c43acd8/replicache.js"
 
 const rep = new Replicache({
   name: "someUniqueApplicationName",

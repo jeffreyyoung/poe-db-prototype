@@ -1,4 +1,5 @@
 import { assertEquals } from "@std/assert/equals";
+import { assertSpyCalls, spy } from "jsr:@std/testing/mock";
 import { Replicache } from "./replicache.ts";
 
 function sleep(ms: number) {
@@ -35,7 +36,6 @@ Deno.test("test", async () => {
     
     await rep.push();
     console.log("pushing")
-    await rep.pushQueue
     console.log("pulling")
     await rep.pull()
     console.log("pulled")
@@ -45,4 +45,67 @@ Deno.test("test", async () => {
         assertEquals(true, false)
     }
 
+})
+
+
+Deno.test("subscriptions", async () => {
+    const rep = new Replicache({
+        spaceID: "test"+Math.floor(Math.random()*9999999),
+        mutators: {
+            setValue: async (tx, { key, value }) => {
+                await tx.set(key, value)
+            }
+        },
+    })
+    const testSubscription = spy((res) => { console.log("subscription called!!", res)})
+
+    rep.subscribe((tx) => tx.get("test"), testSubscription)
+    // @ts-ignore
+    await rep.mutate.setValue({ key: "test", value: "test" })
+    // @ts-ignore
+    await rep.mutate.setValue({ key: "test1", value: "test" })
+    // @ts-ignore
+    await rep.mutate.setValue({ key: "test1", value: "test" })
+    // @ts-ignore
+    await rep.mutate.setValue({ key: "test1", value: "test" })
+    await rep.push()
+    await rep.pull()
+    await sleep(500)
+    assertSpyCalls(testSubscription, 2)
+})
+
+Deno.test("subscription with multiple keys", async () => {
+    const rep = new Replicache({
+        spaceID: "test"+Math.floor(Math.random()*9999999),
+        mutators: {
+            setValue: async (tx, { key, value }) => {
+                await tx.set(key, value)
+            }
+        },
+    })
+    const testSubscription = spy((res) => { console.log("subscription called!!", res)})
+
+    rep.subscribe(async (tx) => {
+        const keys = await tx.scan({ prefix: "meow/" }).values().toArray();
+        return keys
+    }, testSubscription);
+
+    // @ts-ignore
+    await rep.mutate.setValue({ key: "meow/1", value: "test" });
+    await sleep(500)
+    assertSpyCalls(testSubscription, 1)
+
+    // @ts-ignore
+    await rep.mutate.setValue({ key: "meow/2", value: "test" });
+    await sleep(500)
+    assertSpyCalls(testSubscription, 2)
+
+    // @ts-ignore
+    await rep.mutate.setValue({ key: "notmeow/3", value: "test" });
+    await sleep(500)
+    assertSpyCalls(testSubscription, 2)
+    
+    
+
+    
 })
