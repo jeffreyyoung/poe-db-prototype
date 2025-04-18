@@ -3,7 +3,7 @@
 ~~~~
 Create a todo list app using my library.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@dfb655285fe63cb5679e44f1e256ac3fb4fc7526/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9cc052f6b3864ff6c642787633b07d1e819b891a/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -27,7 +27,7 @@ rep.subscribe(async (tx) => {
 # State reducer library with state broadcasting
 
 ~~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@dfb655285fe63cb5679e44f1e256ac3fb4fc7526/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9cc052f6b3864ff6c642787633b07d1e819b891a/synced-state.js"
 
 
 setup({
@@ -50,7 +50,7 @@ action("addTodo", { text: "buy an apple" })
 # State reducer library
 
 ~~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@dfb655285fe63cb5679e44f1e256ac3fb4fc7526/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9cc052f6b3864ff6c642787633b07d1e819b891a/actions.js"
 
 
 setup({
