@@ -3,7 +3,7 @@
 ~~~~
 Create a todo list app using my library.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@d16b81e59fbf423b643ee451fb4f15b19e1ad44d/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@5ac9093c22110c89fe5c6e48fba43414b63d8ac3/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -27,7 +27,9 @@ rep.subscribe(async (tx) => {
 # State reducer library with state broadcasting
 
 ~~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@d16b81e59fbf423b643ee451fb4f15b19e1ad44d/synced-state.js"
+Create a todo list app using this library.
+~~~
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@5ac9093c22110c89fe5c6e48fba43414b63d8ac3/synced-state.js"
 
 
 setup({
@@ -44,13 +46,16 @@ setup({
 })
 
 action("addTodo", { text: "buy an apple" })
+~~~
 ~~~~
 
 
 # State reducer library
 
 ~~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@d16b81e59fbf423b643ee451fb4f15b19e1ad44d/actions.js"
+Create a todo list app using this library.
+~~~
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@5ac9093c22110c89fe5c6e48fba43414b63d8ac3/actions.js"
 
 
 setup({
@@ -66,11 +71,14 @@ setup({
 })
 
 action("addTodo", { text: "buy an apple" })
+~~~
 ~~~~
 
 # yJS library
 
 ~~~~
+Create a todo list app using this library.
+~~~
 import { ydoc } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@a85cb9673073d53ea3f12f9a429db1b7f4f3648a/yjs.js"
 
 // ydoc is a yjs doc
@@ -78,4 +86,5 @@ import { ydoc } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@
 // mutate the doc like a regular yjs doc
 // implement your own updateUI function
 y.observe(updateUI)
+~~~
 ~~~~
