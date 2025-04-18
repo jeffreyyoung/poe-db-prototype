@@ -9,10 +9,10 @@ FULL_URL="https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HAS
 echo "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js" > prompt.md
 
 
-cat > prompt.md << 'EOF'
+cat > prompt.md << "EOF"
 Create a todo list app using my library.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@$COMMIT_HASH/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithRandomNumbers", // all users of this app will share the same spaceID.  spaceID should be unique for each app.
