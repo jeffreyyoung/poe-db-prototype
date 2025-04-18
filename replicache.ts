@@ -1,17 +1,21 @@
 /**
  * Repli-Cache: A Replicache-compatible client with custom internals
  */
-console.log("huh???")
+import type { Mutation, PullResponse, PushResponse, Operation } from "./server-types.ts";
 const baseURL = 'https://jeffreyyoung-replicachebackendv2.web.val.run';
 // @ts-ignore
 import Ably from 'https://esm.sh/ably';
 
-const ably = new Ably.Realtime("frBw7w.OhTF1A:ZQNStvW9BVmKiVwQ3ZqOtTN8T5-QaIlmkQ5a675c2iM");
-
-ably.connection.once("connected", () => {
-  console.log("Connected to Ably!");
-});
-
+let ably: Ably.Realtime | null = null;
+export function getAbly() {
+  if (!ably) {
+    ably = new Ably.Realtime("frBw7w.OhTF1A:ZQNStvW9BVmKiVwQ3ZqOtTN8T5-QaIlmkQ5a675c2iM");
+    ably.connection.once("connected", () => {
+      console.log("Connected to Ably!");
+    });
+  }
+  return ably;
+}
 
 export async function pullFromServer(spaceName: string, afterMutationId: number): Promise<PullResponse> {
     console.log("pulling from server", spaceName, afterMutationId);
@@ -82,7 +86,12 @@ export class Replicache {
   }
 
   #listenForPokes() {
-    const channel = ably.channels.get(this.options.spaceID);
+    // Check if we're in a test environment
+    if (typeof Deno !== 'undefined') {
+      console.log("Skipping Ably subscription in test environment");
+      return;
+    }
+    const channel = getAbly().channels.get(this.options.spaceID);
     channel.subscribe("poke", (message) => {
       console.log("poke", message);
       this.pull();
@@ -175,6 +184,7 @@ export class Replicache {
 
   async pull() {
     this.pullQueue = this.pullQueue.catch((e) => { console.error("Error pulling", e);}).then(async () => {
+      console.log("starting pull");
       const result = await pullFromServer(this.options.spaceID, this.latestMutationId);
       console.log("pulled", result), this.latestMutationId;
       const patches = result.patches;
@@ -195,6 +205,7 @@ export class Replicache {
     }).catch((e) => {
       console.error("Error pulling", e);
     });
+    return this.pullQueue;
   }
 
   _isPendingMutationCompleted(mutation: { resultingMutationId: number | null }) {
@@ -202,7 +213,7 @@ export class Replicache {
   }
 
   async #get(key: string) {
-    const pendingKv = this.pendingMutations.find(mutation => mutation.kvUpdates.has(key));
+    const pendingKv = this.pendingMutations.findLast(mutation => mutation.kvUpdates.has(key));
     if (pendingKv) {
       return pendingKv.kvUpdates.get(key);
     }
@@ -241,11 +252,11 @@ export class Replicache {
     const self = this;
     const accessedKeys = new Set<string>();
     const tx = {
-      async get(key) {
+      async get(key: string) {
         accessedKeys.add(key);
         return self.#get(key);
       },
-      async has(key) {
+      async has(key: string) {
         accessedKeys.add(key);
         return self.#has(key);
       },
@@ -255,7 +266,7 @@ export class Replicache {
       async size() {
         return self.#size();
       },
-      scan(options) {
+      scan(options: { prefix?: string, start?: string, limit?: number }) {
         // https://doc.replicache.dev/api/#scanindexoptions
         const keySet = self.#getKeys();
         const keys = Array.from(keySet);
@@ -282,16 +293,16 @@ export class Replicache {
     const writeOperations: Operation[] = [];
     const tx = {
       ...self.createReadTransaction(),
-      async set(key, value) {
+      async set(key: string, value: any) {
         writeOperations.push({ op: 'set', key, value });
       },
-      async put(key, value) {
+      async put(key: string, value: any) {
         tx.set(key, value);
       },
-      async delete(key) {
+      async delete(key: string) {
         writeOperations.push({ op: 'set', key, value: null });
       },
-      async del(key) {
+      async del(key: string ) {
         writeOperations.push({ op: 'set', key, value: null });
       },
       _getOperations(): Operation[] {
@@ -304,7 +315,7 @@ export class Replicache {
 
   localMutationQueue = Promise.resolve();
 
-  async #doMutation(mutatorName, params, localMutationId) {
+  async #doMutation(mutatorName: string, params: any, localMutationId: number) {
     // this is how we ensure the local mutations are executed in order
     this.localMutationQueue = this.localMutationQueue.catch(() => {}).then(async () => {
       const tx = this.createWriteTransaction();
@@ -321,7 +332,7 @@ export class Replicache {
       this.pendingMutations.push({ id: localMutationId, args: params, kvUpdates, name: mutatorName, operations: tx._getOperations(), status: "waiting" })
       this.fireSubscriptions(new Set(kvUpdates.keys()));
       setTimeout(() => {
-        this.#push();
+        this.push();
       }, 100);
       return result;
     });
@@ -330,7 +341,7 @@ export class Replicache {
 
   get mutate() {
     return new Proxy({}, {
-      get: (target, mutatorName) => {
+      get: (_target, mutatorName) => {
         if (typeof mutatorName !== 'string') {
           throw new Error(`Mutator name must be a string`);
         }
@@ -339,24 +350,24 @@ export class Replicache {
           throw new Error(`Mutator not found: ${mutatorName}`);
         }
         
-        return (args) => {
+        return (args: any) => {
           return this.#doMutation(mutatorName, args, Math.floor(Math.random()*9999999));
         };
       }
     });
   }
 
-  #pushQueue = Promise.resolve();
+  pushQueue = Promise.resolve();
   
-  async #push() {
-    this.#pushQueue = this.#pushQueue.catch((e) => { console.error("Error pushing mutations", e);}).then(async () => {
+  async push() {
+    this.pushQueue = this.pushQueue.catch((e) => { console.error("Error pushing mutations", e);}).then(async () => {
       const mutations = this.pendingMutations.filter(m => m.status !== "pushed")
       mutations.forEach(m => m.status = "pending");
       if (mutations.length === 0) {
         return;
       }
       try {
-        const response = await pushToServer(this.options.spaceID, mutations);
+        await pushToServer(this.options.spaceID, mutations);
         mutations.forEach(m => m.status = "pushed");
       } catch (e) {
         console.error("Error pushing mutations", e);
@@ -368,6 +379,7 @@ export class Replicache {
       // todo: retry
       console.error("Error pushing mutations", e);
     });
+    return this.pushQueue;
   }
 }
 
@@ -395,6 +407,7 @@ class ScanResult {
   values() {
     let index = 0;
     const keysPromise = this.resultKeysPromise;
+    const self = this;
 
     // Create an async iterator that also has a toArray method
     const iterator = {
@@ -402,7 +415,7 @@ class ScanResult {
         const results = await keysPromise;
         if (index < results.length) {
           const key = results[index++];
-          const value = await this.readKey(key);
+          const value = await self.readKey(key);
           return { value, done: false };
         }
         return { done: true };
@@ -413,7 +426,7 @@ class ScanResult {
       // toArray method for AsyncIterableIteratorToArray
       async toArray() {
         const results = await keysPromise;
-        return Promise.all(results.map(async item => await this.readKey(item)));
+        return Promise.all(results.map(async item => await self.readKey(item)));
       }
     };
 

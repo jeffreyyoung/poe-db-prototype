@@ -1,4 +1,4 @@
-type Patch =
+export type Patch =
   | {
       op: 'set';
       key: string;
@@ -11,27 +11,27 @@ type Patch =
       mutationId: number;
     }
 
-type PullResponse = {
+export type PullResponse = {
     lastMutationId: number;
     patches: Patch[]
 }
 
 
-type PushRequest = {
+export type PushRequest = {
     mutations: Mutation[];
 }
-type PushResponse = {
+export type PushResponse = {
     lastMutationId: number;
 }
 
-type Mutation = {
+export type Mutation = {
     id: number; // client defined mutation id
     name: string; // mutator name
     args: Map<string, any>; // mutator arg
     operations: Operation[];
 }
 
-type Operation = {
+export type Operation = {
     op: 'set';
     key: string;
     value: Map<string, any> | null;

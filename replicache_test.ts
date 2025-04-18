@@ -1,0 +1,48 @@
+import { assertEquals } from "@std/assert/equals";
+import { Replicache } from "./replicache.ts";
+
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+Deno.test("test", async () => {
+    try {
+    const rep = new Replicache({
+        spaceID: "test"+Math.floor(Math.random()*9999999),
+        mutators: {
+            setValue: async (tx, { key, value }) => {
+                await tx.set(key, value)
+            }
+        },
+    })
+    console.log("rep", rep)
+    for (let i = 0; i < 10; i++) {
+        console.log("mutate")
+        // @ts-ignore
+        await rep.mutate.setValue({ key: "test"+i, value: "test"+i })
+    }
+    for (let i = 0; i < 10; i++) {
+        const value = await rep.query((tx) => tx.get("test"+i))
+        console.log("value", value)
+        assertEquals("test"+i, value)
+    }
+    for (let i = 0; i < 100; i++) {
+        const value = "meow"+i
+        // @ts-ignore
+        await rep.mutate.setValue({ key: "meow", value: value })
+        assertEquals(value, await rep.query((tx) => tx.get("meow")))
+    }
+    
+    await rep.push();
+    console.log("pushing")
+    await rep.pushQueue
+    console.log("pulling")
+    await rep.pull()
+    console.log("pulled")
+    console.log("latestMutationId", rep.latestMutationId)
+    } catch (e) {
+        console.error("nooooo", e)
+        assertEquals(true, false)
+    }
+
+})
