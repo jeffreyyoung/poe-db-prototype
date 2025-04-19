@@ -30,6 +30,31 @@ rep.subscribe(async (tx) => {
 ~~~
 ~~~~
 
+# Replicache 2
+~~~~
+Create a todo list app using this library.
+~~~
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache2.js"
+
+const rep = new Replicache({
+   spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
+   mutators: {
+    addTodo: async (tx, { title, id }) => {
+      await tx.set(\`todo/\${id}\`, { id, title, completed: false })
+    }
+   }
+})
+
+
+rep.subscribe(async (tx) => {
+  const todos = await tx.scan({ prefix: "todo/" }).values().toArray();
+  return todos;
+}, (todos) => {
+  console.log(todos);
+})
+~~~
+~~~~
+
 # State reducer library with state broadcasting
 
 ~~~~
