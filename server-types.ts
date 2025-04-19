@@ -1,3 +1,27 @@
+export type PokeResult = {
+    mutationIds: number[];
+    /* The local ids of the mutations that were applied */
+    localMutationIds: number[];
+    patches: Patch[];
+  };
+  
+  export type PushRequest = {
+    mutations: Mutation[];
+    operations: Operation[];
+  };
+  export type PushResponse = {
+    lastMutationId: number;
+  };
+  
+  export type PullResponse = {
+    lastMutationId: number;
+    localMutationIds: number[];
+    patches: Patch[];
+  };
+  
+
+
+
 export type Patch =
   | {
       op: 'set';
@@ -11,18 +35,6 @@ export type Patch =
       mutationId: number;
     }
 
-export type PullResponse = {
-    lastMutationId: number;
-    patches: Patch[]
-}
-
-
-export type PushRequest = {
-    mutations: Mutation[];
-}
-export type PushResponse = {
-    lastMutationId: number;
-}
 
 export type Mutation = {
     id: number; // client defined mutation id
