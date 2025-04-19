@@ -173,15 +173,16 @@ export class Replicache {
     }
     const channel = getAbly().channels.get(this.options.spaceID);
     channel.subscribe("poke", (message) => {
-      console.log("received a poke", message);
       if (!message.data) {
-        console.log("no poke data");
+        console.log("received a poke, but it had no poke data");
         this.pull();
         return;
       }
       const pokeResult: PokeResult = message.data;
+      console.log("received a poke", pokeResult.mutationIds,pokeResult);
       const maxMutationId = Math.max(...pokeResult.mutationIds);
       const minMutationId = Math.min(...pokeResult.mutationIds);
+      
       if (minMutationId !== self.latestMutationId + 1) {
         console.log(
           `pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${self.latestMutationId}`
