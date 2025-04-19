@@ -3,7 +3,7 @@
 ~~~~
 Create a todo list app using my library.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@a1c571726ff9f06fb953a6df091293e107b11e35/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@39cda360cd83e487097125eada47346b4e194aa1/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -28,7 +28,7 @@ rep.subscribe(async (tx) => {
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@a1c571726ff9f06fb953a6df091293e107b11e35/replicache2.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@39cda360cd83e487097125eada47346b4e194aa1/replicache2.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -36,9 +36,7 @@ const rep = new Replicache({
     addTodo: async (tx, { title, id }) => {
       await tx.set(`todo/${id}`, { id, title, completed: false })
     }
-   },
-   pushDelay: 50,
-   pullDelay: 300,
+   }
 })
 
 
@@ -56,7 +54,7 @@ rep.subscribe(async (tx) => {
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@a1c571726ff9f06fb953a6df091293e107b11e35/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@39cda360cd83e487097125eada47346b4e194aa1/synced-state.js"
 
 
 setup({
@@ -82,7 +80,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@a1c571726ff9f06fb953a6df091293e107b11e35/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@39cda360cd83e487097125eada47346b4e194aa1/actions.js"
 
 
 setup({
