@@ -154,6 +154,14 @@ export class Replicache {
     );
     this.#startPolling();
     this.#listenForPokes();
+    if (typeof Deno !== "undefined" && typeof window !== "undefined") {
+      this.#addToWindow();
+    }
+  }
+
+  #addToWindow() {
+    // @ts-ignore
+    window.rep = this;
   }
 
   #listenForPokes() {
