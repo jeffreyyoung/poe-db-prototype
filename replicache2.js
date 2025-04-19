@@ -12,6 +12,9 @@ export function getAbly() {
   }
   return ably;
 }
+function isTest() {
+  return typeof Deno !== "undefined";
+}
 export async function pullFromServer(spaceName, afterMutationId) {
   const pullStart = Date.now();
   const response = await fetch(
@@ -22,7 +25,14 @@ export async function pullFromServer(spaceName, afterMutationId) {
     throw new Error(`Failed to pull from ${spaceName}: ${response.statusText}`);
   }
   const data = await response.json();
-  console.log("pulled", data.patches.length, "patches in", pullEnd - pullStart, "ms");
+  console.log(
+    "pulled",
+    data.patches.length,
+    "patches in",
+    pullEnd - pullStart,
+    "ms",
+    isTest() ? null : data
+  );
   return data;
 }
 function collapseMutations(mutations) {
@@ -48,14 +58,18 @@ export async function pushToServer(spaceName, mutations) {
     })),
     operations: collapseMutations(mutations).operations
   };
+  const pushStart = Date.now();
   const response = await fetch(`${baseURL}/push/${spaceName}`, {
     method: "POST",
     body: JSON.stringify(pushRequest)
   });
+  const pushEnd = Date.now();
+  const timeInMs = pushEnd - pushStart;
   if (!response.ok) {
     throw new Error(`Failed to push to ${spaceName}: ${response.statusText}`);
   }
   const data = await response.json();
+  console.log("pushed", mutations.length, "mutations in", timeInMs, "ms", ...isTest() ? [] : ["request", pushRequest, "response", data]);
   return data;
 }
 export class Replicache {
@@ -77,8 +91,16 @@ export class Replicache {
   options;
   constructor(options) {
     this.options = options;
-    this.pull = throttle(this.#doPull.bind(this), options.pullDelay ?? 500, true);
-    this.push = throttle(this.#doPush.bind(this), options.pushDelay ?? 100, true);
+    this.pull = throttle(
+      this.#doPull.bind(this),
+      options.pullDelay ?? 500,
+      true
+    );
+    this.push = throttle(
+      this.#doPush.bind(this),
+      options.pushDelay ?? 100,
+      true
+    );
     this.#startPolling();
     this.#listenForPokes();
   }
@@ -100,7 +122,9 @@ export class Replicache {
       const maxMutationId = Math.max(...pokeResult.mutationIds);
       const minMutationId = Math.min(...pokeResult.mutationIds);
       if (minMutationId !== self.latestMutationId + 1) {
-        console.log(`pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${self.latestMutationId}`);
+        console.log(
+          `pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${self.latestMutationId}`
+        );
         self.pull();
         return;
       }
@@ -382,10 +406,7 @@ export class Replicache {
       return;
     }
     try {
-      const start = Date.now();
       await pushToServer(this.options.spaceID, mutations);
-      const timeInMs = Date.now() - start;
-      console.log("pushed", mutations.length, "mutations in", timeInMs, "ms");
       mutations.forEach((m) => m.status = "pushed");
     } catch (e) {
       console.error("Error pushing mutations", e);
