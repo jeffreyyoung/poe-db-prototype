@@ -13,14 +13,16 @@ export function getAbly() {
   return ably;
 }
 export async function pullFromServer(spaceName, afterMutationId) {
+  const pullStart = Date.now();
   const response = await fetch(
     `${baseURL}/pull/${spaceName}?afterMutationId=${afterMutationId}`
   );
+  const pullEnd = Date.now();
   if (!response.ok) {
     throw new Error(`Failed to pull from ${spaceName}: ${response.statusText}`);
   }
   const data = await response.json();
-  console.log("pulled", data.patches.length);
+  console.log("pulled", data.patches.length, "patches in", pullEnd - pullStart, "ms");
   return data;
 }
 function collapseMutations(mutations) {
@@ -102,6 +104,7 @@ export class Replicache {
         self.pull();
         return;
       }
+      console.log(`applying ${pokeResult.patches.length} patches`);
       self.pendingMutations = self.pendingMutations.filter(
         (m) => !pokeResult.localMutationIds.includes(m.id)
       );

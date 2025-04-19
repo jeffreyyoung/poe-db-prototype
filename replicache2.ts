@@ -31,14 +31,16 @@ import type {
     spaceName: string,
     afterMutationId: number
   ): Promise<PullResponse> {
+    const pullStart = Date.now();
     const response = await fetch(
       `${baseURL}/pull/${spaceName}?afterMutationId=${afterMutationId}`
     );
+    const pullEnd = Date.now();
     if (!response.ok) {
       throw new Error(`Failed to pull from ${spaceName}: ${response.statusText}`);
     }
     const data = await response.json();
-    console.log("pulled", data.patches.length);
+    console.log("pulled", data.patches.length, "patches in", pullEnd - pullStart, "ms");
     return data;
   }
   
@@ -153,6 +155,7 @@ import type {
           self.pull();
           return;
         }
+        console.log(`applying ${pokeResult.patches.length} patches`)
         // we can just apply the mutations and skip pulling
         self.pendingMutations = self.pendingMutations.filter(
           (m) => !pokeResult.localMutationIds.includes(m.id)
