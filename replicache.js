@@ -103,7 +103,7 @@ export class Replicache {
     );
     this.#startPolling();
     this.#listenForPokes();
-    if (typeof Deno !== "undefined" && typeof window !== "undefined") {
+    if (typeof window !== "undefined" && !isTest()) {
       this.#addToWindow();
     }
   }
@@ -118,7 +118,7 @@ export class Replicache {
     }
     const channel = getAbly().channels.get(this.options.spaceID);
     channel.subscribe("poke", (message) => {
-      console.log("poke", message);
+      console.log("received a poke", message);
       if (!message.data) {
         console.log("no poke data");
         this.pull();
