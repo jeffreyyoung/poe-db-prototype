@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert/equals";
 import { assertSpyCalls, spy } from "jsr:@std/testing/mock";
-import { Replicache } from "./replicache.ts";
+import { Replicache } from "./replicache2.ts";
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms))
@@ -24,7 +24,6 @@ Deno.test("test", async () => {
     }
     for (let i = 0; i < 10; i++) {
         const value = await rep.query((tx) => tx.get("test"+i))
-        console.log("value", value)
         assertEquals("test"+i, value)
     }
     for (let i = 0; i < 100; i++) {
@@ -57,7 +56,7 @@ Deno.test("subscriptions", async () => {
             }
         },
     })
-    const testSubscription = spy((res) => { console.log("subscription called!!", res)})
+    const testSubscription = spy((res) => { console.log("subscription called!!")})
 
     rep.subscribe((tx) => tx.get("test"), testSubscription)
     // @ts-ignore
@@ -83,7 +82,7 @@ Deno.test("subscription with multiple keys", async () => {
             }
         },
     })
-    const testSubscription = spy((res) => { console.log("subscription called!!", res)})
+    const testSubscription = spy((res) => { console.log("subscription called!!")})
 
     rep.subscribe(async (tx) => {
         const keys = await tx.scan({ prefix: "meow/" }).values().toArray();

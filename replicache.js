@@ -1,23 +1,38 @@
-const baseURL = "https://jeffreyyoung-replicachebackendv2.web.val.run";
+const baseURL = "https://jeffreyyoung-replicache_backend_fork1.web.val.run";
 import Ably from "https://esm.sh/ably";
 let ably = null;
 export function getAbly() {
   if (!ably) {
-    ably = new Ably.Realtime("frBw7w.OhTF1A:ZQNStvW9BVmKiVwQ3ZqOtTN8T5-QaIlmkQ5a675c2iM");
+    ably = new Ably.Realtime(
+      "frBw7w.OhTF1A:ZQNStvW9BVmKiVwQ3ZqOtTN8T5-QaIlmkQ5a675c2iM"
+    );
     ably.connection.once("connected", () => {
       console.log("Connected to Ably!");
     });
   }
   return ably;
 }
+function isTest() {
+  return typeof Deno !== "undefined";
+}
 export async function pullFromServer(spaceName, afterMutationId) {
-  console.log("pulling from server", spaceName, afterMutationId);
-  const response = await fetch(`${baseURL}/pull/${spaceName}?afterMutationId=${afterMutationId}`);
+  const pullStart = Date.now();
+  const response = await fetch(
+    `${baseURL}/pull/${spaceName}?afterMutationId=${afterMutationId}`
+  );
+  const pullEnd = Date.now();
   if (!response.ok) {
     throw new Error(`Failed to pull from ${spaceName}: ${response.statusText}`);
   }
   const data = await response.json();
-  console.log("pulled", data);
+  console.log(
+    "pulled",
+    data.patches.length,
+    "patches in",
+    pullEnd - pullStart,
+    "ms",
+    isTest() ? null : data
+  );
   return data;
 }
 function collapseMutations(mutations) {
@@ -30,20 +45,31 @@ function collapseMutations(mutations) {
   const mutation = {
     id: Math.floor(Math.random() * 9999999),
     name: "stuf",
-    args: { "hi": "bye" },
+    args: { hi: "bye" },
     operations: Array.from(kvUpdates.values())
   };
   return mutation;
 }
 export async function pushToServer(spaceName, mutations) {
+  const pushRequest = {
+    mutations: mutations.map((m) => ({
+      ...m,
+      operations: []
+    })),
+    operations: collapseMutations(mutations).operations
+  };
+  const pushStart = Date.now();
   const response = await fetch(`${baseURL}/push/${spaceName}`, {
     method: "POST",
-    body: JSON.stringify({ mutations: [collapseMutations(mutations)] })
+    body: JSON.stringify(pushRequest)
   });
+  const pushEnd = Date.now();
+  const timeInMs = pushEnd - pushStart;
   if (!response.ok) {
     throw new Error(`Failed to push to ${spaceName}: ${response.statusText}`);
   }
   const data = await response.json();
+  console.log("pushed", mutations.length, "mutations in", timeInMs, "ms", ...isTest() ? [] : ["request", pushRequest, "response", data]);
   return data;
 }
 export class Replicache {
@@ -65,12 +91,21 @@ export class Replicache {
   options;
   constructor(options) {
     this.options = options;
-    this.pull = throttle(this.#doPull.bind(this), 300, true);
-    this.push = throttle(this.#doPush.bind(this), 300, true);
+    this.pull = throttle(
+      this.#doPull.bind(this),
+      options.pullDelay ?? 500,
+      true
+    );
+    this.push = throttle(
+      this.#doPush.bind(this),
+      options.pushDelay ?? 100,
+      true
+    );
     this.#startPolling();
     this.#listenForPokes();
   }
   #listenForPokes() {
+    const self = this;
     if (typeof Deno !== "undefined") {
       console.log("Skipping Ably subscription in test environment");
       return;
@@ -78,7 +113,28 @@ export class Replicache {
     const channel = getAbly().channels.get(this.options.spaceID);
     channel.subscribe("poke", (message) => {
       console.log("poke", message);
-      this.pull();
+      if (!message.data) {
+        console.log("no poke data");
+        this.pull();
+        return;
+      }
+      const pokeResult = message.data;
+      const maxMutationId = Math.max(...pokeResult.mutationIds);
+      const minMutationId = Math.min(...pokeResult.mutationIds);
+      if (minMutationId !== self.latestMutationId + 1) {
+        console.log(
+          `pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${self.latestMutationId}`
+        );
+        self.pull();
+        return;
+      }
+      console.log(`applying ${pokeResult.patches.length} patches`);
+      self.pendingMutations = self.pendingMutations.filter(
+        (m) => !pokeResult.localMutationIds.includes(m.id)
+      );
+      const changedKeys = self.#applyPatches(pokeResult.patches);
+      self.latestMutationId = maxMutationId;
+      self.fireSubscriptions(changedKeys);
     });
   }
   async #startPolling() {
@@ -104,9 +160,14 @@ export class Replicache {
       throw new Error("The first argument of rep.subscribe must be a function");
     }
     if (typeof onQueryCbChanged !== "function") {
-      throw new Error("The second argument of rep.subscribe must be a function");
+      throw new Error(
+        "The second argument of rep.subscribe must be a function"
+      );
     }
-    this.#subscriptions.set(queryCb, { keysReadOnLastExecution: /* @__PURE__ */ new Set(), onQueryCbChanged });
+    this.#subscriptions.set(queryCb, {
+      keysReadOnLastExecution: /* @__PURE__ */ new Set(),
+      onQueryCbChanged
+    });
     await this.#runAndUpdateSubscription(queryCb, /* @__PURE__ */ new Set());
     return () => {
       this.#subscriptions.delete(queryCb);
@@ -128,7 +189,10 @@ export class Replicache {
     }
     try {
       const result = await cb(tx);
-      if (this.#shouldNotifySubscription(/* @__PURE__ */ new Set([...info.keysReadOnLastExecution, ...tx._getReadKeys()]), changedKeys)) {
+      if (this.#shouldNotifySubscription(
+        /* @__PURE__ */ new Set([...info.keysReadOnLastExecution, ...tx._getReadKeys()]),
+        changedKeys
+      )) {
         info.onQueryCbChanged(result);
       }
     } catch (e) {
@@ -138,36 +202,51 @@ export class Replicache {
   }
   fireSubscriptions(changedKeys) {
     for (const cb of this.#subscriptions.keys()) {
-      const observedKeys = Array.from(this.#subscriptions.get(cb)?.keysReadOnLastExecution || []);
+      const observedKeys = Array.from(
+        this.#subscriptions.get(cb)?.keysReadOnLastExecution || []
+      );
       if (!observedKeys) {
         return;
       }
       this.#runAndUpdateSubscription(cb, changedKeys);
     }
   }
-  async #doPull() {
-    console.log("starting pull");
-    const result = await pullFromServer(this.options.spaceID, this.latestMutationId);
-    const patches = result.patches;
+  #applyPatches(patches) {
     const changedKeys = /* @__PURE__ */ new Set();
-    console.log("patches", patches);
     for (const patch of patches) {
       if (patch.op === "set") {
-        this.kv.set(patch.key, { value: patch.value, mutation_id: patch.mutationId });
+        this.kv.set(patch.key, {
+          value: patch.value,
+          mutation_id: patch.mutationId
+        });
       } else if (patch.op === "del") {
         this.kv.delete(patch.key);
       }
       changedKeys.add(patch.key);
     }
+    return changedKeys;
+  }
+  async #doPull() {
+    console.log("starting pull");
+    const result = await pullFromServer(
+      this.options.spaceID,
+      this.latestMutationId
+    );
+    const patches = result.patches;
+    const changedKeys = this.#applyPatches(patches);
     this.latestMutationId = result.lastMutationId;
-    this.pendingMutations = this.pendingMutations.filter((m) => m.status !== "pushed");
+    this.pendingMutations = this.pendingMutations.filter(
+      (m) => m.status !== "pushed"
+    );
     this.fireSubscriptions(changedKeys);
   }
   _isPendingMutationCompleted(mutation) {
     return mutation.resultingMutationId !== null && mutation.resultingMutationId <= this.latestMutationId;
   }
   async #get(key) {
-    const pendingKv = this.pendingMutations.findLast((mutation) => mutation.kvUpdates.has(key));
+    const pendingKv = this.pendingMutations.findLast(
+      (mutation) => mutation.kvUpdates.has(key)
+    );
     if (pendingKv) {
       return pendingKv.kvUpdates.get(key);
     }
@@ -188,7 +267,12 @@ export class Replicache {
     return this.kv.size === 0 && this.pendingMutations.every((mutation) => mutation.kvUpdates.size === 0);
   }
   #getKeys() {
-    const keySet = /* @__PURE__ */ new Set([...this.kv.keys(), ...this.pendingMutations.flatMap((mutation) => Array.from(mutation.kvUpdates.keys()))]);
+    const keySet = /* @__PURE__ */ new Set([
+      ...this.kv.keys(),
+      ...this.pendingMutations.flatMap(
+        (mutation) => Array.from(mutation.kvUpdates.keys())
+      )
+    ]);
     return keySet;
   }
   async #size() {
@@ -274,7 +358,14 @@ export class Replicache {
           kvUpdates.delete(op.key);
         }
       }
-      this.pendingMutations.push({ id: localMutationId, args: params, kvUpdates, name: mutatorName, operations: tx._getOperations(), status: "waiting" });
+      this.pendingMutations.push({
+        id: localMutationId,
+        args: params,
+        kvUpdates,
+        name: mutatorName,
+        operations: tx._getOperations(),
+        status: "waiting"
+      });
       this.fireSubscriptions(new Set(kvUpdates.keys()));
       setTimeout(() => {
         this.push();
@@ -284,36 +375,44 @@ export class Replicache {
     return this.localMutationQueue;
   }
   get mutate() {
-    return new Proxy({}, {
-      get: (_target, mutatorName) => {
-        if (typeof mutatorName !== "string") {
-          throw new Error(`Mutator name must be a string`);
+    return new Proxy(
+      {},
+      {
+        get: (_target, mutatorName) => {
+          if (typeof mutatorName !== "string") {
+            throw new Error(`Mutator name must be a string`);
+          }
+          if (!this.options.mutators[mutatorName]) {
+            throw new Error(`Mutator not found: ${mutatorName}`);
+          }
+          return (args) => {
+            return this.#doMutation(
+              mutatorName,
+              args,
+              Math.floor(Math.random() * 9999999)
+            );
+          };
         }
-        if (!this.options.mutators[mutatorName]) {
-          throw new Error(`Mutator not found: ${mutatorName}`);
-        }
-        return (args) => {
-          return this.#doMutation(mutatorName, args, Math.floor(Math.random() * 9999999));
-        };
       }
-    });
+    );
   }
   async #doPush() {
-    console.log("starting push", this.pendingMutations);
-    const mutations = this.pendingMutations.filter((m) => m.status !== "pushed");
+    console.log("starting push", this.pendingMutations.length);
+    const mutations = this.pendingMutations.filter(
+      (m) => m.status !== "pushed"
+    );
     mutations.forEach((m) => m.status = "pending");
     if (mutations.length === 0) {
       return;
     }
     try {
-      const start = Date.now();
       await pushToServer(this.options.spaceID, mutations);
-      const timeInMs = Date.now() - start;
-      console.log("pushed", mutations.length, "mutations in", timeInMs, "ms");
       mutations.forEach((m) => m.status = "pushed");
     } catch (e) {
       console.error("Error pushing mutations", e);
-      this.pendingMutations = this.pendingMutations.filter((mutation) => !mutations.includes(mutation));
+      this.pendingMutations = this.pendingMutations.filter(
+        (mutation) => !mutations.includes(mutation)
+      );
     }
   }
 }
@@ -322,13 +421,15 @@ class ScanResult {
   readKey;
   constructor(resultKeys, readKey) {
     this.readKey = readKey;
-    this.resultKeysPromise = Promise.all(resultKeys.map(async (key) => {
-      const value = await readKey(key);
-      if (value === null) {
-        return null;
-      }
-      return key;
-    })).then((keys) => keys.filter((key) => key !== null));
+    this.resultKeysPromise = Promise.all(
+      resultKeys.map(async (key) => {
+        const value = await readKey(key);
+        if (value === null) {
+          return null;
+        }
+        return key;
+      })
+    ).then((keys) => keys.filter((key) => key !== null));
   }
   // The default AsyncIterable implementation (same as values)
   [Symbol.asyncIterator]() {
@@ -355,7 +456,9 @@ class ScanResult {
       // toArray method for AsyncIterableIteratorToArray
       async toArray() {
         const results = await keysPromise;
-        return Promise.all(results.map(async (item) => await self.readKey(item)));
+        return Promise.all(
+          results.map(async (item) => await self.readKey(item))
+        );
       }
     };
     return iterator;
@@ -404,7 +507,9 @@ class ScanResult {
       // toArray method for AsyncIterableIteratorToArray
       async toArray() {
         const resultKeys = await keysPromise;
-        return Promise.all(resultKeys.map(async (key) => [key, await readKey(key)]));
+        return Promise.all(
+          resultKeys.map(async (key) => [key, await readKey(key)])
+        );
       }
     };
     return iterator;
