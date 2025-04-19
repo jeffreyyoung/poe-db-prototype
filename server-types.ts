@@ -15,7 +15,6 @@ export type PokeResult = {
   
   export type PullResponse = {
     lastMutationId: number;
-    localMutationIds: number[];
     patches: Patch[];
   };
   
