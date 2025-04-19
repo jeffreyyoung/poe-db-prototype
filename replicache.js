@@ -93,12 +93,12 @@ export class Replicache {
     this.options = options;
     this.pull = throttle(
       this.#doPull.bind(this),
-      options.pullDelay ?? 500,
+      options.pullDelay ?? 20,
       true
     );
     this.push = throttle(
       this.#doPush.bind(this),
-      options.pushDelay ?? 100,
+      options.pushDelay ?? 20,
       true
     );
     this.#startPolling();

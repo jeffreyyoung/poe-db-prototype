@@ -18,8 +18,8 @@ const rep = new Replicache({
       await tx.set(\`todo/\${id}\`, { id, title, completed: false })
     }
    },
-   pushDelay: 50,
-   pullDelay: 300,
+   pushDelay: 20,
+   pullDelay: 20,
 })
 
 
