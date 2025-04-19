@@ -7,7 +7,7 @@ cat << EOF > README.md
 
 # Replicache
 ~~~~
-Create a todo list app using this library.
+Create a drawing canvas using this library.  Show each user's cursor as it moves around the canvas.
 ~~~
 import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js"
 
