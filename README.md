@@ -36,7 +36,9 @@ const rep = new Replicache({
     addTodo: async (tx, { title, id }) => {
       await tx.set(`todo/${id}`, { id, title, completed: false })
     }
-   }
+   },
+   pushDelay: 50,
+   pullDelay: 300,
 })
 
 
