@@ -148,6 +148,7 @@ import type {
         const maxMutationId = Math.max(...pokeResult.mutationIds);
         const minMutationId = Math.min(...pokeResult.mutationIds);
         if (minMutationId !== self.latestMutationId + 1) {
+            console.log(`pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${self.latestMutationId}`)
           // we need to pull
           self.pull();
           return;
