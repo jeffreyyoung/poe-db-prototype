@@ -77,8 +77,8 @@ export class Replicache {
   options;
   constructor(options) {
     this.options = options;
-    this.pull = throttle(this.#doPull.bind(this), 300, true);
-    this.push = throttle(this.#doPush.bind(this), 300, true);
+    this.pull = throttle(this.#doPull.bind(this), options.pullDelay ?? 500, true);
+    this.push = throttle(this.#doPush.bind(this), options.pushDelay ?? 100, true);
     this.#startPolling();
     this.#listenForPokes();
   }
