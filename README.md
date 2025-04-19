@@ -3,7 +3,7 @@
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@1eb181af8b58be3bb218b986f7f915720695ca55/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@b38703bf080e3fc51c23179681ebaceacf6fe3d7/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -31,7 +31,7 @@ rep.subscribe(async (tx) => {
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@1eb181af8b58be3bb218b986f7f915720695ca55/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@b38703bf080e3fc51c23179681ebaceacf6fe3d7/synced-state.js"
 
 
 setup({
@@ -57,7 +57,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@1eb181af8b58be3bb218b986f7f915720695ca55/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@b38703bf080e3fc51c23179681ebaceacf6fe3d7/actions.js"
 
 
 setup({
