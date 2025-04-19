@@ -31,7 +31,6 @@ import type {
     spaceName: string,
     afterMutationId: number
   ): Promise<PullResponse> {
-    console.log("pulling from server", spaceName, afterMutationId);
     const response = await fetch(
       `${baseURL}/pull/${spaceName}?afterMutationId=${afterMutationId}`
     );
@@ -39,7 +38,7 @@ import type {
       throw new Error(`Failed to pull from ${spaceName}: ${response.statusText}`);
     }
     const data = await response.json();
-    console.log("pulled", data);
+    console.log("pulled", data.patches.length);
     return data;
   }
   
@@ -478,7 +477,7 @@ import type {
     }
   
     async #doPush() {
-      console.log("starting push", this.pendingMutations);
+      console.log("starting push", this.pendingMutations.length);
       const mutations = this.pendingMutations.filter(
         (m) => m.status !== "pushed"
       );
