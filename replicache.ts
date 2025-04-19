@@ -154,7 +154,7 @@ export class Replicache {
     );
     this.#startPolling();
     this.#listenForPokes();
-    if (typeof window !== "undefined" && !isTest()) {
+    if (typeof window !== "undefined") {
       this.#addToWindow();
     }
   }

@@ -29,6 +29,10 @@ rep.subscribe(async (tx) => {
 }, (todos) => {
   console.log(todos);
 })
+
+
+const randId = () => Date.now()+Math.floor(Math.random()*1000000)
+rep.mutate.addTodo({ title: "buy an apple", id: randId() })
 ~~~
 ~~~~
 
