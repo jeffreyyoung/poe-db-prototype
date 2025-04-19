@@ -13,7 +13,6 @@ export function getAbly() {
   return ably;
 }
 export async function pullFromServer(spaceName, afterMutationId) {
-  console.log("pulling from server", spaceName, afterMutationId);
   const response = await fetch(
     `${baseURL}/pull/${spaceName}?afterMutationId=${afterMutationId}`
   );
@@ -21,7 +20,7 @@ export async function pullFromServer(spaceName, afterMutationId) {
     throw new Error(`Failed to pull from ${spaceName}: ${response.statusText}`);
   }
   const data = await response.json();
-  console.log("pulled", data);
+  console.log("pulled", data.patches.length);
   return data;
 }
 function collapseMutations(mutations) {
@@ -370,7 +369,7 @@ export class Replicache {
     );
   }
   async #doPush() {
-    console.log("starting push", this.pendingMutations);
+    console.log("starting push", this.pendingMutations.length);
     const mutations = this.pendingMutations.filter(
       (m) => m.status !== "pushed"
     );
