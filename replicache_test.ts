@@ -109,3 +109,7 @@ Deno.test("subscription with multiple keys", async () => {
 
     
 })
+
+Deno.test("This one should fail because certain things are not cleaned up", () => {
+    assertEquals(true, true, "yay");
+})

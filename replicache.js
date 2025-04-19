@@ -20,10 +20,10 @@ export async function pullFromServer(spaceName, afterMutationId) {
   console.log("pulled", data);
   return data;
 }
-function combineMutations(mutations) {
+function collapseMutations(mutations) {
   const kvUpdates = /* @__PURE__ */ new Map();
-  for (const mutation2 of mutations) {
-    for (const operation of mutation2.operations) {
+  for (const m of mutations) {
+    for (const operation of m.operations) {
       kvUpdates.set(operation.key, operation);
     }
   }
@@ -38,7 +38,7 @@ function combineMutations(mutations) {
 export async function pushToServer(spaceName, mutations) {
   const response = await fetch(`${baseURL}/push/${spaceName}`, {
     method: "POST",
-    body: JSON.stringify({ mutations: [combineMutations(mutations)] })
+    body: JSON.stringify({ mutations: [collapseMutations(mutations)] })
   });
   if (!response.ok) {
     throw new Error(`Failed to push to ${spaceName}: ${response.statusText}`);
@@ -101,10 +101,10 @@ export class Replicache {
   }
   async subscribe(queryCb, onQueryCbChanged) {
     if (typeof queryCb !== "function") {
-      throw new Error("queryCb must be a function");
+      throw new Error("The first argument of rep.subscribe must be a function");
     }
     if (typeof onQueryCbChanged !== "function") {
-      throw new Error("onQueryCbChanged must be a function");
+      throw new Error("The second argument of rep.subscribe must be a function");
     }
     this.#subscriptions.set(queryCb, { keysReadOnLastExecution: /* @__PURE__ */ new Set(), onQueryCbChanged });
     await this.#runAndUpdateSubscription(queryCb, /* @__PURE__ */ new Set());
