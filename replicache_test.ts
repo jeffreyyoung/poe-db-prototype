@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert/equals";
 import { assertSpyCalls, spy } from "jsr:@std/testing/mock";
-import { Replicache } from "./replicache2.ts";
+import { Replicache } from "./replicache.ts";
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms))
