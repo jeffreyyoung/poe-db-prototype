@@ -9,7 +9,7 @@ cat << EOF > README.md
 ~~~~
 @gpt-4.1 @app-creator @claude-3.7-sonnet Create a collaborative drawing app. Here are the requirements:
 - Use replicache as the source of truth for all synced data. (don't throttle or batch writes)
-- If a user is drawing, or typing, write each change to replicache. Ex: call rep.mutate.updateTodo({ id, text }) each time the user types a character
+- If a user is drawing, or typing, write each change to replicache. Ex: call rep.mutate.updateTodo({ id, text }) each time the user types a character or rep.mutate.addPointToLine({ id, point }) each time the user draws a point
 - Show each user's cursor as it moves around the screen.
 - Use await rep.getClientId() to get a unique identifier for the current client
 - When a user first loads the page, assign them a fun unique color and name.
@@ -17,7 +17,10 @@ cat << EOF > README.md
 - Use rep.subscribeToScanEntries to update the UI with added, removed, and changed entries
 - Avoid rewriting entire html elements, instead update the contents of the element.
 - DO NOT USE LOCALSTORAGE or any persistence api. You are in a sandboxed iframe. Replicache handles persistence
+
+This is some example usage of the replicache library.
 ~~~
+<html>
 <script type="module">
 // the replicache library should be imported as a esmodule
 import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js"
@@ -77,6 +80,7 @@ rep.subscribe(async (tx) => {
 })
 
 const todo = await rep.query(tx => tx.get("todo/123"))
+</script>
 ~~~
 ~~~~
 
