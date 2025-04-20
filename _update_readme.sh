@@ -9,6 +9,8 @@ cat << EOF > README.md
 ~~~~
 Create a collaborative drawing app.  Show each user's cursor as it moves around the screen.
 ~~~
+<script type="module">
+// the replicache library should be imported as a esmodule
 import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js"
 
 const rep = new Replicache({
@@ -69,6 +71,7 @@ setup({
 })
 
 action("addTodo", { text: "buy an apple" })
+</script>
 ~~~
 ~~~~
 
