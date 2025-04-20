@@ -25,7 +25,7 @@ export type Patch =
   | {
       op: 'set';
       key: string;
-      value: Map<string, any>;
+      value: any;
       mutationId: number;
     }
   | {
