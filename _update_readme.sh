@@ -8,10 +8,14 @@ cat << EOF > README.md
 # Replicache
 ~~~~
 Create a collaborative drawing app. Here are the requirements:
+- Use replicache as the source of truth for all synced data. (don't throttle or batch writes)
+- Store each line in replicache using the key "lines/<id>".
+- Don't wait for the user to complete a line before writing it to replicache.  Just write each point as it happens.
+- Have a `rep.mutate.addPoint({ lineId, point })` mutator that adds a point to a line.  It should also create the line if it doesn't exist.
 - Show each user's cursor as it moves around the screen.
 - Show a list of online users.
-- Store each line in replicache using the key "lines/<id>".
-- Don't wait for the user to complete a line before writing it to "lines/<id>".  Just write each point as it happens.
+- Assign each cursor a unique color and a unique name.
+- The UI should be fun and colorful.
 ~~~
 <script type="module">
 // the replicache library should be imported as a esmodule
