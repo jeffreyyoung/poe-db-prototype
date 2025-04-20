@@ -5,7 +5,7 @@ Create a collaborative drawing app.  Show each user's cursor as it moves around 
 ~~~
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@e26b177ff8a4f86aac582adb83a38a4d3dd22ceb/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@c006e49137e79568aea424642bc61c1b18cd4f78/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -34,11 +34,19 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 
 
 // special new api
-// observeEntries is a new api with a slightly different api than subscribe
+// I recommend using observeEntries to render the ui
 repo.observeEntries("todo/", (entries, changes) => {
    // entries is an array of [key, value] pairs
    // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
-   // avoid rewriting the entire ui when possible, instead only update the parts of the ui that have changed
+   changes.added.forEach(([key, value]) => {
+      addToDom(key, value);
+   })
+   changes.changed.forEach(([key, value]) => {
+      updateDom(key, value)
+   })
+   changes.removed.forEach(([key, value]) => {
+      removeFromDom(key)
+   })
 })
 ~~~
 ~~~~
@@ -48,7 +56,7 @@ repo.observeEntries("todo/", (entries, changes) => {
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@e26b177ff8a4f86aac582adb83a38a4d3dd22ceb/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@c006e49137e79568aea424642bc61c1b18cd4f78/synced-state.js"
 
 
 setup({
@@ -75,7 +83,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@e26b177ff8a4f86aac582adb83a38a4d3dd22ceb/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@c006e49137e79568aea424642bc61c1b18cd4f78/actions.js"
 
 
 setup({
