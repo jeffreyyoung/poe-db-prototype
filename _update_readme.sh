@@ -40,11 +40,19 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 
 
 // special new api
-// observeEntries is a new api with a slightly different api than subscribe
+// I recommend using observeEntries to render the ui
 repo.observeEntries("todo/", (entries, changes) => {
    // entries is an array of [key, value] pairs
    // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
-   // avoid rewriting the entire ui when possible, instead only update the parts of the ui that have changed
+   changes.added.forEach(([key, value]) => {
+      addToDom(key, value);
+   })
+   changes.changed.forEach(([key, value]) => {
+      updateDom(key, value)
+   })
+   changes.removed.forEach(([key, value]) => {
+      removeFromDom(key)
+   })
 })
 ~~~
 ~~~~
