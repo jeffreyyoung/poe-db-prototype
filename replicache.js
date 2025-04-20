@@ -172,6 +172,12 @@ function keys(store) {
 }
 
 // replicache-utils/createReadTransaction.ts
+function scanArgToObject(arg) {
+  if (typeof arg === "string") {
+    return { prefix: arg };
+  }
+  return arg;
+}
 function createReadTransaction(store) {
   const _readKeys = /* @__PURE__ */ new Set();
   const _scannedKeys = /* @__PURE__ */ new Set();
@@ -197,7 +203,8 @@ function createReadTransaction(store) {
       const keySet = keys(store);
       return Promise.resolve(keySet.size);
     },
-    scan({ from, to, prefix, limit }) {
+    scan(arg) {
+      const { from, to, prefix, limit } = scanArgToObject(arg);
       const keySet = keys(store);
       let keys2 = Array.from(keySet).sort();
       if (prefix) {
@@ -290,10 +297,10 @@ function createWriteTransaction(store) {
 }
 
 // replicache-utils/observePrefix.ts
-function observePrefix(rep, prefix, onChange) {
+function observePrefix(rep, scanArg, onChange) {
   let lastEntries = [];
   return rep.subscribe(async (tx) => {
-    const entries = await tx.scan({ prefix }).entries().toArray();
+    const entries = await tx.scan(scanArg).entries().toArray();
     return entries;
   }, (entries) => {
     const oldMap = new Map(lastEntries);
@@ -456,8 +463,8 @@ var ReplicacheCore = class {
     }
     return this.#subscriptionManager.subscribe(queryCb, onQueryCbChanged);
   }
-  observeEntries(prefix, onChange) {
-    return observePrefix(this, prefix, onChange);
+  observeEntries(scanArg, onChange) {
+    return observePrefix(this, scanArg, onChange);
   }
   #applyPatches(patches) {
     const changedKeys = /* @__PURE__ */ new Set();
@@ -559,8 +566,11 @@ var Replicache = class {
     });
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id));
   }
+  subscribeToScanEntries(scanArg, onChange) {
+    return this.#core.observeEntries(scanArg, onChange);
+  }
   observeEntries(prefix, onChange) {
-    return this.#core.observeEntries(prefix, onChange);
+    return this.#core.observeEntries({ prefix }, onChange);
   }
   get mutate() {
     return new Proxy(

@@ -1,7 +1,7 @@
 /**
  * Repli-Cache: A Replicache-compatible client with custom internals
  */
-import { createReadTransaction } from "./replicache-utils/createReadTransaction.ts";
+import { createReadTransaction, ScanArg } from "./replicache-utils/createReadTransaction.ts";
 import { createWriteTransaction } from "./replicache-utils/createWriteTransaction.ts";
 import { throttle } from "./replicache-utils/throttlePromise.ts";
 import { createValTownNetworkClient } from "./replicache-utils/NetworkClientValTown.ts";
@@ -121,8 +121,12 @@ export class Replicache {
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter(m => m.status !== "waiting").map(m => m.mutation.id));
   }
 
+  subscribeToScanEntries(scanArg: ScanArg, onChange: ObservePrefixOnChange) {
+    return this.#core.observeEntries(scanArg, onChange);
+  }
+
   observeEntries(prefix: string, onChange: ObservePrefixOnChange) {
-    return this.#core.observeEntries(prefix, onChange);
+    return this.#core.observeEntries({ prefix }, onChange);
   }
 
   get mutate() {

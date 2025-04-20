@@ -1,3 +1,4 @@
+import { ScanArg } from "./createReadTransaction.ts";
 import ReplicacheCore from "./createReplicacheCore.ts";
 
 type ChangeSummary = {
@@ -7,11 +8,13 @@ type ChangeSummary = {
 };
 export type ObservePrefixOnChange = (entries: [string, any][], changes: ChangeSummary) => void;
 
-export function observePrefix(rep: ReplicacheCore, prefix: string, onChange: ObservePrefixOnChange) {
+
+
+export function observePrefix(rep: ReplicacheCore, scanArg: ScanArg, onChange: ObservePrefixOnChange) {
     let lastEntries: [string, any][] = [];
 
     return rep.subscribe(async (tx) => {
-        const entries = await tx.scan({ prefix }).entries().toArray();
+        const entries = await tx.scan(scanArg).entries().toArray();
         return entries;
     }, (entries: [string, any][]) => {
         const oldMap = new Map(lastEntries);

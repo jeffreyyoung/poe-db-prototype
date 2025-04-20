@@ -1,7 +1,14 @@
-import { isEmpty } from "https://cdn.jsdelivr.net/npm/lib0@0.2.99/object/+esm";
 import { Store, get, has, keys as getKeysSet } from "./Store.ts";
 
+type ScanObjectArg = { from?: string, to?: string, prefix?: string, limit?: number }
+export type ScanArg = ScanObjectArg | string
 
+export function scanArgToObject(arg: ScanArg): ScanObjectArg {
+    if (typeof arg === "string") {
+        return { prefix: arg }
+    }
+    return arg
+}
 
 export function createReadTransaction(store: Store) {
     const _readKeys = new Set<string>();
@@ -29,7 +36,8 @@ export function createReadTransaction(store: Store) {
             const keySet = getKeysSet(store);
             return Promise.resolve(keySet.size);
         },
-        scan({ from, to, prefix, limit }: { from?: string, to?: string, prefix?: string, limit?: number }) {
+        scan(arg: ScanArg) {
+            const { from, to, prefix, limit } = scanArgToObject(arg);
             const keySet = getKeysSet(store);
             let keys = Array.from(keySet).sort();
             if (prefix) {

@@ -1,7 +1,7 @@
 /**
  * Repli-Cache: A Replicache-compatible client with custom internals
  */
-import { createReadTransaction } from "./createReadTransaction.ts";
+import { createReadTransaction, ScanArg } from "./createReadTransaction.ts";
 import { createWriteTransaction } from "./createWriteTransaction.ts";
 import { observePrefix, ObservePrefixOnChange } from "./observePrefix.ts";
 import type { PullResponse, PokeResult, Patch } from "./server-types.ts";
@@ -127,8 +127,8 @@ export class ReplicacheCore {
     return this.#subscriptionManager.subscribe(queryCb, onQueryCbChanged);
   }
 
-  observeEntries(prefix: string, onChange: ObservePrefixOnChange) {
-    return observePrefix(this, prefix, onChange);
+  observeEntries(scanArg: ScanArg, onChange: ObservePrefixOnChange) {
+    return observePrefix(this, scanArg, onChange);
   }
 
   #applyPatches(patches: Patch[]): Set<string> {
