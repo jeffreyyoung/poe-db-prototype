@@ -16,31 +16,36 @@ This is some example usage of the replicache library.
 <html>
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@4a95f16d4480a782a37808d1879e7428e7bafd6e/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@8a5452f632870b7b2364b1e852ce004ddef9844b/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
    mutators: {
+      // most apps should indicate the presence of users
       setPresence: async (tx, args) => {
          await tx.set('presence/'+args.clientId, { updatedAt: Date.now(), clientId: args.clientId, cursorPosition: args.cursorPosition})
       },
-      // example setup state for sudoku
+      // if some apps require common state before beginning, have a  mutator
+      // that is called on page load.  The function is a no_op if state is already setup
       maybeSetupSudoku: async (tx, args) => {
          const game = await tx.get("game");
          if (!game) {
-            await tx.set("game", { started: true })
+            await tx.set("game", { started: true, boardSize: 81 })
          }
+         const boardSize = await tx.get("game")?.boardSize ?? 81;
          const cells = await tx.scan({ prefix: "cells/" }).entries().toArray();
-         if (cells.length !== 81) {
-            let i = 0;
-            const board = generateSudoku(81);
-            for (const cell of board) {
-               await tx.set(cell.key, cell.data)
-            }
+         if (cells.length === boardSize) {
+            return;
+         }
+
+         const board = generateSudoku(boardSize);
+         for (const cell of board) {
+            await tx.set("cells/"+cell.key, cell.data)
          }
       },
-      addTodo: async (tx, args) => {
-         await tx.set('todo/'+args.id, { id: args.id, title: args.title, completed: false })
+      setTodo: async (tx, {id, text = "", completed = false}) => {
+          // use lexicographically sortable ids
+          await tx.set("todos/"+id, { id, text, completed })
       }
    },
    // do not reduce the pushDelay unless the user explicitly asks to reduce it
@@ -51,16 +56,21 @@ const rep = new Replicache({
 
 
 rep.subscribeToScanEntries("presence/", (entries, changes) => {
+   const toRemove = [
+     ...changes.removed,
+     ...entries.filter(entry => !wasActiveInLastThirtySeconds(entry))
+  ]
+  for (const [key, value] of toRemove) {
+     ensureRemovedFromDom(key);
+  }
+  
   // entries is an array of [key, value] pairs
   // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
-  changes.added.forEach(([key, value]) => {
+  changes.added.filter(wasActiveInLastThirtySeconds).forEach(([key, value]) => {
      addToDom(key, value);
   })
-  changes.changed.forEach(([key, value]) => {
+  changes.changed.filter(wasActiveInLastThirtySeconds).forEach(([key, value]) => {
      updateDom(key, value);
-  })
-  changes.removed.forEach(([key, value]) => {
-     removeFromDom(key);
   })
 })
 const clientId = await rep.getClientId()
@@ -85,7 +95,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@4a95f16d4480a782a37808d1879e7428e7bafd6e/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@8a5452f632870b7b2364b1e852ce004ddef9844b/synced-state.js"
 
 
 setup({
@@ -112,7 +122,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@4a95f16d4480a782a37808d1879e7428e7bafd6e/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@8a5452f632870b7b2364b1e852ce004ddef9844b/actions.js"
 
 
 setup({
