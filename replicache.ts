@@ -11,7 +11,6 @@ import ReplicacheCore from "./replicache-utils/createReplicacheCore.ts";
 export class Replicache {
   #core: ReplicacheCore;
 
-
   latestMutationId = 0;
 
   #enqueuePull: ReturnType<typeof throttle<unknown>>;
@@ -193,5 +192,3 @@ export class Replicache {
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
-
-export default Replicache;
