@@ -15,6 +15,7 @@ cat << EOF > README.md
 - When a user first loads the page, assign them a fun unique color and name.
 - Avoid global variables and generally avoid storing state outside of replicache. 
 - Use rep.subscribeToScanEntries to update the UI with added, removed, and changed entries
+- Avoid rewriting entire html elements, instead update the contents of the element.
 - DO NOT USE LOCALSTORAGE or any persistence api. You are in a sandboxed iframe. Replicache handles persistence
 ~~~
 <script type="module">
@@ -30,13 +31,20 @@ const rep = new Replicache({
     deleteTodo: async (tx, { id }) => {
       await tx.del(\`todo/\${id}\`)
     },
-    updateTodo: async (tx, { id, title, completed }) => {
+    updateTodoTitle: async (tx, { id, title }) => {
       const todo = await tx.get(\`todo/\${id}\`)
       if (!todo) {
          return;
       }
-      await tx.set(\`todo/\${id}\`, { ...todo, title, completed })
+      await tx.set(\`todo/\${id}\`, { ...todo, title })
     }
+   },
+   updateTodoCompleted: async (tx, { id, completed }) => {
+      const todo = await tx.get(\`todo/\${id}\`)
+      if (!todo) {
+         return;
+      }
+      await tx.set(\`todo/\${id}\`, { ...todo, completed })
    },
    // do not reduce the pushDelay unless the user explicitly asks to reduce it
    pushDelay: 100,
