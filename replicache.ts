@@ -11,8 +11,6 @@ import ReplicacheCore from "./replicache-utils/createReplicacheCore.ts";
 export class Replicache {
   #core: ReplicacheCore;
 
-  latestMutationId = 0;
-
   #enqueuePull: ReturnType<typeof throttle<unknown>>;
   #enqueuePush: ReturnType<typeof throttle<unknown>>;
   #networkClient: NetworkClient;
@@ -117,9 +115,9 @@ export class Replicache {
     console.log("starting pull");
     const result = await this.#networkClient.pull({
       spaceId: this.options.spaceID,
-      afterMutationId: this.latestMutationId
+      afterMutationId: this.#core.latestMutationId
     });
-    this.#core.processPullResult(result, this.#core.store.pendingMutations.filter(m => m.status === "pending").map(m => m.mutation.id));
+    this.#core.processPullResult(result, this.#core.store.pendingMutations.filter(m => m.status !== "waiting").map(m => m.mutation.id));
   }
 
   get mutate() {

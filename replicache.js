@@ -466,7 +466,6 @@ var createReplicacheCore_default = ReplicacheCore;
 // replicache.ts
 var Replicache = class {
   #core;
-  latestMutationId = 0;
   #enqueuePull;
   #enqueuePush;
   #networkClient;
@@ -542,9 +541,9 @@ var Replicache = class {
     console.log("starting pull");
     const result = await this.#networkClient.pull({
       spaceId: this.options.spaceID,
-      afterMutationId: this.latestMutationId
+      afterMutationId: this.#core.latestMutationId
     });
-    this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status === "pending").map((m) => m.mutation.id));
+    this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id));
   }
   get mutate() {
     return new Proxy(
