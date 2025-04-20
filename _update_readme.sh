@@ -7,7 +7,7 @@ cat << EOF > README.md
 
 # Replicache
 ~~~~
-Create a drawing canvas using this library.  Show each user's cursor as it moves around the canvas.
+Create a collaborative drawing app.  Show each user's cursor as it moves around the screen.
 ~~~
 import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js"
 
@@ -18,8 +18,8 @@ const rep = new Replicache({
       await tx.set(\`todo/\${id}\`, { id, title, completed: false })
     }
    },
-   pushDelay: 20,
-   pullDelay: 20,
+   pushDelay: 100,
+   pullDelay: 100,
 })
 
 const randId = () => Date.now()+Math.floor(Math.random()*1000000)
