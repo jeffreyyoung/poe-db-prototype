@@ -16,11 +16,14 @@ This is some example usage of the replicache library.
 <html>
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@0a2240232ed1873ccbf289d7593daf0c2a1fa01c/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@4a95f16d4480a782a37808d1879e7428e7bafd6e/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
    mutators: {
+      setPresence: async (tx, args) => {
+         await tx.set('presence/'+args.clientId, { updatedAt: Date.now(), clientId: args.clientId, cursorPosition: args.cursorPosition})
+      },
       // example setup state for sudoku
       maybeSetupSudoku: async (tx, args) => {
          const game = await tx.get("game");
@@ -36,11 +39,6 @@ const rep = new Replicache({
             }
          }
       },
-      // example presence mutator
-      setPresence: async (tx, args) => {
-         await tx.set('presence/'+args.clientId, { updatedAt: Date.now(), clientId: args.clientId, cursorPosition: args.cursorPosition})
-      },
-      // example add todo mutator
       addTodo: async (tx, args) => {
          await tx.set('todo/'+args.id, { id: args.id, title: args.title, completed: false })
       }
@@ -87,7 +85,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@0a2240232ed1873ccbf289d7593daf0c2a1fa01c/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@4a95f16d4480a782a37808d1879e7428e7bafd6e/synced-state.js"
 
 
 setup({
@@ -114,7 +112,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@0a2240232ed1873ccbf289d7593daf0c2a1fa01c/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@4a95f16d4480a782a37808d1879e7428e7bafd6e/actions.js"
 
 
 setup({
