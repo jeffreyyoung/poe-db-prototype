@@ -3,11 +3,9 @@
 ~~~~
 @gpt-4.1 @app-creator @claude-3.7-sonnet Create a collaborative drawing app. Here are the requirements:
 - Use replicache as the source of truth for all synced data. (don't throttle or batch writes)
-- If a user is drawing, or typing, write each change to replicache. Ex: call rep.mutate.updateTodo({ id, text }) each time the user types a character or rep.mutate.addPointToLine({ id, point }) each time the user draws a point
-- Show each user's cursor as it moves around the screen.
+- Do not reference any global variables in a mutator.  Use rep.subscribeToScanEntries or rep.subscribe to react to changes.
 - Use await rep.getClientId() to get a unique identifier for the current client
-- When a user first loads the page, assign them a fun unique color and name.
-- Avoid global variables and generally avoid storing state outside of replicache. 
+- When a client first loads the page, assign them a fun unique color and name.
 - Use rep.subscribeToScanEntries to update the UI with added, removed, and changed entries
 - Avoid rewriting entire html elements, instead update the contents of the element.
 - DO NOT USE LOCALSTORAGE or any persistence api. You are in a sandboxed iframe. Replicache handles persistence
@@ -17,7 +15,7 @@ This is some example usage of the replicache library.
 <html>
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@421368b9496ea6bd3b7919524b75f6989b11a066/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@b0fe8cae58342de3b939a05116bbfe3ee74a7128/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -83,7 +81,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@421368b9496ea6bd3b7919524b75f6989b11a066/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@b0fe8cae58342de3b939a05116bbfe3ee74a7128/synced-state.js"
 
 
 setup({
@@ -110,7 +108,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@421368b9496ea6bd3b7919524b75f6989b11a066/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@b0fe8cae58342de3b939a05116bbfe3ee74a7128/actions.js"
 
 
 setup({
