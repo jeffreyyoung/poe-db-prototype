@@ -4,6 +4,7 @@
 @gpt-4.1 @app-creator @claude-3.7-sonnet Create a collaborative drawing app. Here are the requirements:
 - Use replicache as the source of truth for all synced data. (don't throttle or batch writes)
 - Do not reference any global variables in a mutator.  Use rep.subscribeToScanEntries or rep.subscribe to react to changes.
+- If there is required initial state, have a mutator like `async maybeSetupState(tx, args) {   if (!await tx.has("someField")) { tx.set("someField", { started: true })}}
 - Use await rep.getClientId() to get a unique identifier for the current client
 - When a client first loads the page, assign them a fun unique color and name.
 - Use rep.subscribeToScanEntries to update the UI with added, removed, and changed entries
@@ -15,40 +16,26 @@ This is some example usage of the replicache library.
 <html>
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@b0fe8cae58342de3b939a05116bbfe3ee74a7128/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@0a2240232ed1873ccbf289d7593daf0c2a1fa01c/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
    mutators: {
-    createTodo: async (tx, { title, id }) => {
-      await tx.set(`todo/${id}`, { id, title, completed: false })
-    },
-    deleteTodo: async (tx, { id }) => {
-      await tx.del(`todo/${id}`)
-    },
-    updateTodoTitle: async (tx, { id, title }) => {
-      const todo = await tx.get(`todo/${id}`)
-      if (!todo) {
-         return;
+      setPresence: async (tx, args) => {
+         await tx.set('presence/'+args.clientId, { updatedAt: Date.now(), clientId: args.clientId, cursorPosition: args.cursorPosition})
+      },
+      addTodo: async (tx, args) => {
+         await tx.set('todo/'+args.id, { id: args.id, title: args.title, completed: false })
       }
-      await tx.set(`todo/${id}`, { ...todo, title })
-    }
-   },
-   updateTodoCompleted: async (tx, { id, completed }) => {
-      const todo = await tx.get(`todo/${id}`)
-      if (!todo) {
-         return;
-      }
-      await tx.set(`todo/${id}`, { ...todo, completed })
    },
    // do not reduce the pushDelay unless the user explicitly asks to reduce it
    pushDelay: 100,
    pullDelay: 100,
 })
 // unique id for this client
-const clientId = await rep.getClientId()
-const randId = () => Date.now()+Math.floor(Math.random()*1000000)
-rep.subscribeToScanEntries("todo/", (entries, changes) => {
+
+
+rep.subscribeToScanEntries("presence/", (entries, changes) => {
   // entries is an array of [key, value] pairs
   // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
   changes.added.forEach(([key, value]) => {
@@ -61,13 +48,15 @@ rep.subscribeToScanEntries("todo/", (entries, changes) => {
      removeFromDom(key);
   })
 })
-rep.mutate.createTodo({ title: "buy an apple", id: randId() })
-
+const clientId = await rep.getClientId()
+rep.mutate.setPresence({ clientId, updatedAt: Date.now(), cursorPosition: { x: 100, y: 100 }})
+rep.mutate.addTodo({ id: 123, title: "buy an apple" })
 rep.subscribe(async (tx) => {
   // tx is a read only transaction.  .set and .del are not available.
   const todos = await tx.scan({ prefix: "todo/" }).entries().toArray();
   return todos.length;
 }, (numTodos) => {
+  // update ui
   console.log(numTodos); // numTodos is the number of todos
 })
 
@@ -81,7 +70,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@b0fe8cae58342de3b939a05116bbfe3ee74a7128/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@0a2240232ed1873ccbf289d7593daf0c2a1fa01c/synced-state.js"
 
 
 setup({
@@ -108,7 +97,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@b0fe8cae58342de3b939a05116bbfe3ee74a7128/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@0a2240232ed1873ccbf289d7593daf0c2a1fa01c/actions.js"
 
 
 setup({
