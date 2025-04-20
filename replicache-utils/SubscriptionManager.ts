@@ -50,9 +50,7 @@ export function createSubscriptionManager(store: Store) {
             }
         }
 
-        console.log("check scanned keys", lastRun.lastReadTransaction._scannedKeys, tx._scannedKeys)
         if (!areSetsEqual(lastRun.lastReadTransaction._scannedKeys, tx._scannedKeys)) {
-            console.log("scanned keys changed", lastRun.lastReadTransaction._scannedKeys, tx._scannedKeys)
             // the scanned keys changed across the last two runs
             lastRun.onResultChanged(result);
             return;

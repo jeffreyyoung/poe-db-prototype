@@ -200,10 +200,8 @@ function createReadTransaction(store) {
     scan({ from, to, prefix, limit }) {
       const keySet = keys(store);
       let keys2 = Array.from(keySet).sort();
-      console.log("all keys!", keys2);
       if (prefix) {
         keys2 = keys2.filter((key) => key.startsWith(prefix));
-        console.log("filtered keys", keys2, prefix);
       }
       if (from) {
         keys2 = keys2.slice(keys2.indexOf(from));
@@ -214,10 +212,8 @@ function createReadTransaction(store) {
       if (limit) {
         keys2 = keys2.slice(0, limit);
       }
-      console.log("scanning keys", keys2);
       const getNthKey = (index) => {
         _scannedKeys.add(keys2[index]);
-        console.log("scanned key", keys2[index]);
         return keys2[index];
       };
       async function getEntry(key) {
@@ -338,9 +334,7 @@ function createSubscriptionManager(store) {
         return;
       }
     }
-    console.log("check scanned keys", lastRun.lastReadTransaction._scannedKeys, tx._scannedKeys);
     if (!areSetsEqual(lastRun.lastReadTransaction._scannedKeys, tx._scannedKeys)) {
-      console.log("scanned keys changed", lastRun.lastReadTransaction._scannedKeys, tx._scannedKeys);
       lastRun.onResultChanged(result);
       return;
     }

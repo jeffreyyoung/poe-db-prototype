@@ -32,10 +32,8 @@ export function createReadTransaction(store: Store) {
         scan({ from, to, prefix, limit }: { from?: string, to?: string, prefix?: string, limit?: number }) {
             const keySet = getKeysSet(store);
             let keys = Array.from(keySet).sort();
-            console.log("all keys!", keys)
             if (prefix) {
                 keys = keys.filter((key) => key.startsWith(prefix));
-                console.log("filtered keys", keys, prefix)
             }
             if (from) {
                 keys = keys.slice(keys.indexOf(from));
@@ -46,10 +44,8 @@ export function createReadTransaction(store: Store) {
             if (limit) {
                 keys = keys.slice(0, limit);
             }
-            console.log("scanning keys", keys)
             const getNthKey = (index: number) => {
                 _scannedKeys.add(keys[index]);
-                console.log("scanned key", keys[index])
                 return keys[index];
             }
             async function getEntry(key: string) {
