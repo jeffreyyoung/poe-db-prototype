@@ -1,7 +1,7 @@
 
 # Replicache
 ~~~~
-Create a collaborative drawing app. Here are the requirements:
+@gpt-4.1 @app-creator @claude-3.7-sonnet Create a collaborative drawing app. Here are the requirements:
 - Use replicache as the source of truth for all synced data. (don't throttle or batch writes)
 - Store each line in replicache using the key "lines/<id>".
 - Each point of the line should be displayed to as it is drawn.  Do not wait for mouse up to draw the line.
@@ -16,7 +16,7 @@ Create a collaborative drawing app. Here are the requirements:
 ~~~
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9dcfa22d7c3d587c951bc0565ff8bddba30aec1b/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@169aa5314167a6bf4fe3ce8f2eb20491da3f64b3/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -68,7 +68,7 @@ rep.subscribeToScanEntries("todo/", (entries, changes) => {
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9dcfa22d7c3d587c951bc0565ff8bddba30aec1b/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@169aa5314167a6bf4fe3ce8f2eb20491da3f64b3/synced-state.js"
 
 
 setup({
@@ -95,7 +95,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9dcfa22d7c3d587c951bc0565ff8bddba30aec1b/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@169aa5314167a6bf4fe3ce8f2eb20491da3f64b3/actions.js"
 
 
 setup({
