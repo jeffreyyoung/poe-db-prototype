@@ -7,7 +7,7 @@ cat << EOF > README.md
 
 # Replicache
 ~~~~
-Create a collaborative drawing app. Here are the requirements:
+@gpt-4.1 @app-creator @claude-3.7-sonnet Create a collaborative drawing app. Here are the requirements:
 - Use replicache as the source of truth for all synced data. (don't throttle or batch writes)
 - Store each line in replicache using the key "lines/<id>".
 - Each point of the line should be displayed to as it is drawn.  Do not wait for mouse up to draw the line.
