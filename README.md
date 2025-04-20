@@ -9,11 +9,12 @@
 - When a user first loads the page, assign them a fun unique color and name.
 - Avoid global variables and generally avoid storing state outside of replicache. 
 - Use rep.subscribeToScanEntries to update the UI with added, removed, and changed entries
+- Avoid rewriting entire html elements, instead update the contents of the element.
 - DO NOT USE LOCALSTORAGE or any persistence api. You are in a sandboxed iframe. Replicache handles persistence
 ~~~
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@af38f2821f3698ba3dbcfbb0bb4264bae39ec476/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@047bf3c510c8eb3e2598eff5ce8f5a99b25b2d78/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -24,13 +25,20 @@ const rep = new Replicache({
     deleteTodo: async (tx, { id }) => {
       await tx.del(`todo/${id}`)
     },
-    updateTodo: async (tx, { id, title, completed }) => {
+    updateTodoTitle: async (tx, { id, title }) => {
       const todo = await tx.get(`todo/${id}`)
       if (!todo) {
          return;
       }
-      await tx.set(`todo/${id}`, { ...todo, title, completed })
+      await tx.set(`todo/${id}`, { ...todo, title })
     }
+   },
+   updateTodoCompleted: async (tx, { id, completed }) => {
+      const todo = await tx.get(`todo/${id}`)
+      if (!todo) {
+         return;
+      }
+      await tx.set(`todo/${id}`, { ...todo, completed })
    },
    // do not reduce the pushDelay unless the user explicitly asks to reduce it
    pushDelay: 100,
@@ -71,7 +79,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@af38f2821f3698ba3dbcfbb0bb4264bae39ec476/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@047bf3c510c8eb3e2598eff5ce8f5a99b25b2d78/synced-state.js"
 
 
 setup({
@@ -98,7 +106,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@af38f2821f3698ba3dbcfbb0bb4264bae39ec476/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@047bf3c510c8eb3e2598eff5ce8f5a99b25b2d78/actions.js"
 
 
 setup({
