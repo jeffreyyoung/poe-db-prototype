@@ -7,7 +7,7 @@ import { throttle } from "./replicache-utils/throttlePromise.ts";
 import { createValTownNetworkClient } from "./replicache-utils/NetworkClientValTown.ts";
 import { NetworkClient, NetworkClientFactory } from "./replicache-utils/NetworkClient.ts";
 import ReplicacheCore from "./replicache-utils/createReplicacheCore.ts";
-import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
+import { ChangeSummary, ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
 
 export class Replicache {
   #core: ReplicacheCore;
@@ -178,6 +178,16 @@ export class Replicache {
         (m) => !notYetPushed.includes(m)
       );
     }
+  }
+
+  onChange(cb: (args: { state: Map<string, any>, changes: ChangeSummary, clientId: string }) => void) {
+    return this.subscribeToScanEntries({ prefix: "" }, (result, changes) => {
+      cb({
+        state: new Map(result),
+        changes,
+        clientId: this.#core.getClientIdSync()
+      });
+    });
   }
 }
 

@@ -425,6 +425,9 @@ var ReplicacheCore = class {
   getClientId() {
     return Promise.resolve(this.#clientId);
   }
+  getClientIdSync() {
+    return this.#clientId;
+  }
   async mutate(mutatorName, args, localMutationId) {
     const snapshot = createStoreSnapshot(this.store);
     const tx = createWriteTransaction(snapshot);
@@ -618,6 +621,15 @@ var Replicache = class {
         (m) => !notYetPushed.includes(m)
       );
     }
+  }
+  onChange(cb) {
+    return this.subscribeToScanEntries({ prefix: "" }, (result, changes) => {
+      cb({
+        state: new Map(result),
+        changes,
+        clientId: this.#core.getClientIdSync()
+      });
+    });
   }
 };
 function sleep(ms) {

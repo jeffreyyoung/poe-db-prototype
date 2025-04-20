@@ -1,7 +1,7 @@
 import { ScanArg } from "./createReadTransaction.ts";
 import ReplicacheCore from "./createReplicacheCore.ts";
 
-type ChangeSummary = {
+export type ChangeSummary = {
     added: [string, any][],
     removed: [string, any][],
     changed: [string, any][]

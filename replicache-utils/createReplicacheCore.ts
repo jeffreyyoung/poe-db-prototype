@@ -77,6 +77,10 @@ export class ReplicacheCore {
     return Promise.resolve(this.#clientId);
   }
 
+  getClientIdSync() {
+    return this.#clientId;
+  }
+
   async mutate(
     mutatorName: string,
     args: any,
