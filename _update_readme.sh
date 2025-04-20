@@ -18,6 +18,7 @@ const rep = new Replicache({
       await tx.set(\`todo/\${id}\`, { id, title, completed: false })
     }
    },
+   // do not reduce the pushDelay unless the user explicitly asks to reduce it
    pushDelay: 100,
    pullDelay: 100,
 })
@@ -37,10 +38,11 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 
 
 // special new api
-// I recommend using observeEntries to render the ui
+// observeEntries is a new api with a slightly different api than subscribe
 repo.observeEntries("todo/", (entries, changes) => {
    // entries is an array of [key, value] pairs
    // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
+   // avoid rewriting the entire ui when possible, instead only update the parts of the ui that have changed
 })
 ~~~
 ~~~~
