@@ -144,7 +144,7 @@ function createStoreSnapshot(store) {
 }
 function get(store, key) {
   for (let i = 0; i < store.pendingMutations.length; i++) {
-    const mutation = store.pendingMutations.at(i - 1);
+    const mutation = store.pendingMutations.at(store.pendingMutations.length - 1 - i);
     if (mutation && mutation.kvUpdates.has(key)) {
       return mutation.kvUpdates.get(key);
     }
@@ -220,9 +220,13 @@ function createReadTransaction(store) {
         console.log("scanned key", keys2[index]);
         return keys2[index];
       };
+      async function getEntry(key) {
+        return [key, await readValue(key)];
+      }
       return {
-        keys: () => addToArrayMethod(keyAsyncIterable(getNthKey, keys2.length)),
-        values: () => addToArrayMethod(mapAsyncIterator(keyAsyncIterable(getNthKey, keys2.length), readValue)),
+        keys: () => withToArray(keyAsyncIterable(getNthKey, keys2.length)),
+        values: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys2.length), readValue)),
+        entries: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys2.length), getEntry)),
         [Symbol.asyncIterator]() {
           return mapAsyncIterator(keyAsyncIterable(getNthKey, keys2.length), readValue);
         }
@@ -247,7 +251,7 @@ function keyAsyncIterable(getNthKey, totalKeys) {
     }
   };
 }
-function addToArrayMethod(asyncIterable) {
+function withToArray(asyncIterable) {
   asyncIterable.toArray = async () => {
     const results = [];
     for await (const result of asyncIterable) {

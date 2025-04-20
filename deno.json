@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "dev": "deno run --watch main.ts",
+    "dev": "deno test --watch --ignore=replicache_test.ts",
     "test": "deno test --ignore=replicache_test.ts",
     "test:full": "deno test --allow-net"
   },

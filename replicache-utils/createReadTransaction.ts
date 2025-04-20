@@ -52,10 +52,14 @@ export function createReadTransaction(store: Store) {
                 console.log("scanned key", keys[index])
                 return keys[index];
             }
+            async function getEntry(key: string) {
+                return [key, await readValue(key)]
+            }
             
             return {
-                keys: () => addToArrayMethod(keyAsyncIterable(getNthKey, keys.length)),
-                values: () => addToArrayMethod(mapAsyncIterator(keyAsyncIterable(getNthKey, keys.length), readValue)),
+                keys: () => withToArray(keyAsyncIterable(getNthKey, keys.length)),
+                values: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys.length), readValue)),
+                entries: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys.length), getEntry)),
                 [Symbol.asyncIterator]() {
                     return mapAsyncIterator(keyAsyncIterable(getNthKey, keys.length), readValue);
                 }
@@ -82,7 +86,7 @@ function keyAsyncIterable(getNthKey: (index: number) => string, totalKeys: numbe
     }
 }
 
-function addToArrayMethod(asyncIterable: AsyncIterable<any>): AsyncIterable<any> & { toArray: () => Promise<any[]> } {
+function withToArray(asyncIterable: AsyncIterable<any>): AsyncIterable<any> & { toArray: () => Promise<any[]> } {
     // @ts-ignore
     asyncIterable.toArray = async () => {
         const results = [];

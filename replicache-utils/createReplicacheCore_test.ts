@@ -173,3 +173,40 @@ Deno.test("process pull works", async () => {
   await todoValuesSpy.assertCallCount(2);
   await todoValuesSpy.assertLastCallArgs([["yay"]]);
 });
+
+Deno.test("entries works", async () => {
+    
+    const rep = new ReplicacheCore({
+      mutators: {
+        setKeys: async (tx, kvs: Record<string, any>) => {
+          for (const [key, value] of Object.entries(kvs)) {
+            await tx.set(key, value);
+          }   
+        },
+      },
+    });
+
+    const entriesSpy = createSubscriptionSpy(rep, (tx) => tx.scan({prefix: "words/" }).entries().toArray())
+    await entriesSpy.assertCallCount(1)
+    await entriesSpy.assertLastCallArgs([[]])
+
+    await rep.mutate("setKeys", { "words/1": "first" }, 555);
+    await entriesSpy.assertCallCount(2);
+    await entriesSpy.assertLastCallArgs([[["words/1", "first"]]])
+
+    await rep.mutate("setKeys", { "words/1": "first (changed)" }, 556);
+    await entriesSpy.assertCallCount(3);
+    await entriesSpy.assertLastCallArgs([[["words/1", "first (changed)"]]])
+
+    await rep.mutate("setKeys", { "words/2": "yay" }, 557);
+    await entriesSpy.assertCallCount(4);
+    await entriesSpy.assertLastCallArgs([[["words/1", "first (changed)"], ["words/2", "yay"]]])
+
+    await rep.mutate("setKeys", { "words/1": "first (changed again)" }, 558);
+    await entriesSpy.assertCallCount(5);
+    await entriesSpy.assertLastCallArgs([[["words/1", "first (changed again)"], ["words/2", "yay"]]])
+
+
+    await rep.mutate("setKeys", { "not/in/subscription": "ok" }, 559)
+    await entriesSpy.assertCallCount(5)
+})

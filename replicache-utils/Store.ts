@@ -32,7 +32,7 @@ export function createStoreSnapshot(store: Store) {
 
 export function get(store: Store, key: string) {
     for (let i = 0; i < store.pendingMutations.length; i++) {
-        const mutation = store.pendingMutations.at(i - 1);
+        const mutation = store.pendingMutations.at(store.pendingMutations.length - 1 - i);
         if (mutation && mutation.kvUpdates.has(key)) {
             return mutation.kvUpdates.get(key);
         }

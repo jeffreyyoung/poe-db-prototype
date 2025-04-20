@@ -92,8 +92,4 @@ Deno.test("values changed in prefix", async () => {
     assertSpyCall(onChangeSpy, 0, {
         args: [[]]
     });
-
-    store.kv
-    
-    
 })
