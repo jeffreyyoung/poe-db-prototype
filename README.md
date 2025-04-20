@@ -3,7 +3,7 @@
 ~~~~
 Create a collaborative drawing app.  Show each user's cursor as it moves around the screen.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9acf525bdfe1d9058de85741a0112676e50af55d/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@7c64159afd2e90c6d5fec8a7ec8e3a4ea2ed5080/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -28,6 +28,14 @@ rep.subscribe(async (tx) => {
 })
 
 const todo = await rep.query(tx => tx.get("todo/123"))
+
+
+// special new api
+// I recommend using observeEntries to render the ui
+repo.observeEntries("todo/", (entries, changes) => {
+   // entries is an array of [key, value] pairs
+   // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
+})
 ~~~
 ~~~~
 
@@ -36,7 +44,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9acf525bdfe1d9058de85741a0112676e50af55d/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@7c64159afd2e90c6d5fec8a7ec8e3a4ea2ed5080/synced-state.js"
 
 
 setup({
@@ -62,7 +70,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9acf525bdfe1d9058de85741a0112676e50af55d/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@7c64159afd2e90c6d5fec8a7ec8e3a4ea2ed5080/actions.js"
 
 
 setup({
