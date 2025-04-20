@@ -7,7 +7,11 @@ cat << EOF > README.md
 
 # Replicache
 ~~~~
-Create a collaborative drawing app.  Show each user's cursor as it moves around the screen.
+Create a collaborative drawing app. Here are the requirements:
+- Show each user's cursor as it moves around the screen.
+- Show a list of online users.
+- Store each line in replicache using the key "lines/<id>".
+- Don't wait for the user to complete a line before writing it to "lines/<id>".  Just write each point as it happens.
 ~~~
 <script type="module">
 // the replicache library should be imported as a esmodule
@@ -41,7 +45,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 
 // special new api
 // I recommend using observeEntries to render the ui
-rep.observeEntries("todo/", (entries, changes) => {
+rep.subscribeToScanEntries("todo/", (entries, changes) => {
    // entries is an array of [key, value] pairs
    // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
    changes.added.forEach(([key, value]) => {
