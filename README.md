@@ -3,7 +3,7 @@
 ~~~~
 Create a collaborative drawing app.  Show each user's cursor as it moves around the screen.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@399d91cdc0605857dfaf046e43001495f721114d/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@3538197e8cefd360df5ece7ba9a031564f9838a7/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -12,6 +12,7 @@ const rep = new Replicache({
       await tx.set(`todo/${id}`, { id, title, completed: false })
     }
    },
+   // do not reduce the pushDelay unless the user explicitly asks to reduce it
    pushDelay: 100,
    pullDelay: 100,
 })
@@ -31,10 +32,11 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 
 
 // special new api
-// I recommend using observeEntries to render the ui
+// observeEntries is a new api with a slightly different api than subscribe
 repo.observeEntries("todo/", (entries, changes) => {
    // entries is an array of [key, value] pairs
    // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
+   // avoid rewriting the entire ui when possible, instead only update the parts of the ui that have changed
 })
 ~~~
 ~~~~
@@ -44,7 +46,7 @@ repo.observeEntries("todo/", (entries, changes) => {
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@399d91cdc0605857dfaf046e43001495f721114d/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@3538197e8cefd360df5ece7ba9a031564f9838a7/synced-state.js"
 
 
 setup({
@@ -70,7 +72,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@399d91cdc0605857dfaf046e43001495f721114d/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@3538197e8cefd360df5ece7ba9a031564f9838a7/actions.js"
 
 
 setup({
