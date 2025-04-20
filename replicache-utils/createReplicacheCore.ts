@@ -4,7 +4,7 @@
 import { createReadTransaction } from "./createReadTransaction.ts";
 import { createWriteTransaction } from "./createWriteTransaction.ts";
 import type { PullResponse, PokeResult, Patch } from "./server-types.ts";
-import { Store } from "./Store.ts";
+import { createStoreSnapshot, Store } from "./Store.ts";
 import { createSubscriptionManager } from "./SubscriptionManager.ts";
 
 /**
@@ -76,7 +76,8 @@ export class ReplicacheCore {
     args: any,
     localMutationId: number
   ) {
-    const tx = createWriteTransaction(this.store);
+    const snapshot = createStoreSnapshot(this.store);
+    const tx = createWriteTransaction(snapshot);
     const result = await this.options.mutators[mutatorName](tx, args);
     const kvUpdates = new Map();
     for (const op of tx._writeOperations) {

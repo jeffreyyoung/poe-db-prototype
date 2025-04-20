@@ -133,6 +133,15 @@ function collapseMutations(mutations) {
 }
 
 // replicache-utils/Store.ts
+function createStoreSnapshot(store) {
+  return {
+    kv: new Map(store.kv),
+    pendingMutations: store.pendingMutations.map((mutation) => ({
+      ...mutation,
+      kvUpdates: new Map(mutation.kvUpdates)
+    }))
+  };
+}
 function get(store, key) {
   for (let i = 0; i < store.pendingMutations.length; i++) {
     const mutation = store.pendingMutations.at(i - 1);
@@ -391,7 +400,8 @@ var ReplicacheCore = class {
     this.#subscriptionManager.notifySubscribers(changedKeys);
   }
   async mutate(mutatorName, args, localMutationId) {
-    const tx = createWriteTransaction(this.store);
+    const snapshot = createStoreSnapshot(this.store);
+    const tx = createWriteTransaction(snapshot);
     const result = await this.options.mutators[mutatorName](tx, args);
     const kvUpdates = /* @__PURE__ */ new Map();
     for (const op of tx._writeOperations) {
@@ -475,7 +485,10 @@ var Replicache = class {
     this.#networkClient = createNetworkClient({
       spaceId: this.options.spaceID,
       onPoke: (poke) => {
-        this.#core.processPokeResult(poke);
+        const { shouldPull } = this.#core.processPokeResult(poke);
+        if (shouldPull) {
+          this.#enqueuePull();
+        }
       },
       pullDelay: options.pullDelay ?? 20,
       pushDelay: options.pushDelay ?? 20
@@ -529,18 +542,6 @@ var Replicache = class {
     });
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status === "pending").map((m) => m.mutation.id));
   }
-  localMutationQueue = Promise.resolve();
-  async #doMutation(mutatorName, params, localMutationId) {
-    this.localMutationQueue = this.localMutationQueue.catch(() => {
-    }).then(async () => {
-      await this.#core.mutate(mutatorName, params, localMutationId);
-      setTimeout(() => {
-        this.push();
-      }, 100);
-      return;
-    });
-    return this.localMutationQueue;
-  }
   get mutate() {
     return new Proxy(
       {},
@@ -552,12 +553,10 @@ var Replicache = class {
           if (!this.options.mutators[mutatorName]) {
             throw new Error(`Mutator not found: ${mutatorName}`);
           }
-          return (args) => {
-            return this.#doMutation(
-              mutatorName,
-              args,
-              Math.floor(Math.random() * 9999999)
-            );
+          return async (args) => {
+            const localMutationId = Math.floor(Math.random() * 9999999);
+            await this.#core.mutate(mutatorName, args, localMutationId);
+            await this.push();
           };
         }
       }

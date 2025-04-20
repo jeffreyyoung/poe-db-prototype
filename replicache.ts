@@ -47,7 +47,10 @@ export class Replicache {
     this.#networkClient = createNetworkClient({
       spaceId: this.options.spaceID,
       onPoke: (poke) => {
-        this.#core.processPokeResult(poke);
+        const { shouldPull } = this.#core.processPokeResult(poke);
+        if (shouldPull) {
+          this.#enqueuePull();
+        }
       },
       pullDelay: options.pullDelay ?? 20,
       pushDelay: options.pushDelay ?? 20,
@@ -119,24 +122,6 @@ export class Replicache {
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter(m => m.status === "pending").map(m => m.mutation.id));
   }
 
-
-
-  localMutationQueue = Promise.resolve();
-
-  async #doMutation(mutatorName: string, params: any, localMutationId: number) {
-    // this is how we ensure the local mutations are executed in order
-    this.localMutationQueue = this.localMutationQueue
-      .catch(() => {})
-      .then(async () => {
-        await this.#core.mutate(mutatorName, params, localMutationId);
-        setTimeout(() => {
-          this.push();
-        }, 100);
-        return;
-      });
-    return this.localMutationQueue;
-  }
-
   get mutate() {
     return new Proxy(
       {},
@@ -150,12 +135,10 @@ export class Replicache {
             throw new Error(`Mutator not found: ${mutatorName}`);
           }
 
-          return (args: any) => {
-            return this.#doMutation(
-              mutatorName,
-              args,
-              Math.floor(Math.random() * 9999999)
-            );
+          return async (args: any) => {
+            const localMutationId = Math.floor(Math.random() * 9999999)
+            await this.#core.mutate(mutatorName, args, localMutationId)
+            await this.push()
           };
         },
       }

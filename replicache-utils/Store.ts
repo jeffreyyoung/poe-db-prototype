@@ -19,6 +19,17 @@ export function createStore(): Store {
     }
 }
 
+
+export function createStoreSnapshot(store: Store) {
+    return {
+        kv: new Map(store.kv),
+        pendingMutations: store.pendingMutations.map((mutation) => ({
+            ...mutation,
+            kvUpdates: new Map(mutation.kvUpdates),
+        })),
+    }
+}
+
 export function get(store: Store, key: string) {
     for (let i = 0; i < store.pendingMutations.length; i++) {
         const mutation = store.pendingMutations.at(i - 1);
