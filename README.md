@@ -4,13 +4,15 @@
 Create a collaborative drawing app. Here are the requirements:
 - Use replicache as the source of truth for all synced data. (don't throttle or batch writes)
 - Store each line in replicache using the key "lines/<id>".
-- Each point of the line should be displayed to as it is drawn.  Do not wait for mouse up to draw the line.
+- Display each point to all clients as it is drawn.  Do not wait for mouse up to draw the line.
 - Have a mutator that adds a point to a line.  It should also create the line if it doesn't exist.
 - Use `rep.subscribeToScanEntries` api to render the line as it is drawn.
 - Show each user's cursor as it moves around the screen.
 - Show a list of online users.
 - Assign each cursor a unique color and a unique name.
 - The UI should be fun and colorful.
+- DO NOT USE LOCALSTORAGE or any persistence api.  You are in a sandboxed iframe. Replicache handles persistence
+- Use await rep.getClientId() to get a unique identifier
 ~~~
 <script type="module">
 // the replicache library should be imported as a esmodule
