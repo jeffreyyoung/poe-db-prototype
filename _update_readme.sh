@@ -28,26 +28,31 @@ import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prot
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
    mutators: {
+      // most apps should indicate the presence of users
       setPresence: async (tx, args) => {
          await tx.set('presence/'+args.clientId, { updatedAt: Date.now(), clientId: args.clientId, cursorPosition: args.cursorPosition})
       },
-      // example setup state for sudoku
+      // if some apps require common state before beginning, have a `maybeSetup` mutator
+      // that is called on page load.  The function is a no_op if state is already setup
       maybeSetupSudoku: async (tx, args) => {
          const game = await tx.get("game");
          if (!game) {
-            await tx.set("game", { started: true })
+            await tx.set("game", { started: true, boardSize: 81 })
          }
+         const boardSize = await tx.get("game")?.boardSize ?? 81;
          const cells = await tx.scan({ prefix: "cells/" }).entries().toArray();
-         if (cells.length !== 81) {
-            let i = 0;
-            const board = generateSudoku(81);
-            for (const cell of board) {
-               await tx.set(cell.key, cell.data)
-            }
+         if (cells.length === boardSize) {
+            return;
+         }
+
+         const board = generateSudoku(boardSize);
+         for (const cell of board) {
+            await tx.set("cells/"+cell.key, cell.data)
          }
       },
-      addTodo: async (tx, args) => {
-         await tx.set('todo/'+args.id, { id: args.id, title: args.title, completed: false })
+      setTodo: async (tx, {id, text = "", completed = false}) => {
+          // use lexicographically sortable ids
+          await tx.set("todos/"+id, { id, text, completed })
       }
    },
    // do not reduce the pushDelay unless the user explicitly asks to reduce it
@@ -58,16 +63,21 @@ const rep = new Replicache({
 
 
 rep.subscribeToScanEntries("presence/", (entries, changes) => {
+   const toRemove = [
+     ...changes.removed,
+     ...entries.filter(entry => !wasActiveInLastThirtySeconds(entry))
+  ]
+  for (const [key, value] of toRemove) {
+     ensureRemovedFromDom(key);
+  }
+  
   // entries is an array of [key, value] pairs
   // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
-  changes.added.forEach(([key, value]) => {
+  changes.added.filter(wasActiveInLastThirtySeconds).forEach(([key, value]) => {
      addToDom(key, value);
   })
-  changes.changed.forEach(([key, value]) => {
+  changes.changed.filter(wasActiveInLastThirtySeconds).forEach(([key, value]) => {
      updateDom(key, value);
-  })
-  changes.removed.forEach(([key, value]) => {
-     removeFromDom(key);
   })
 })
 const clientId = await rep.getClientId()
