@@ -21,9 +21,26 @@ import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prot
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
    mutators: {
+      // example setup state for sudoku
+      maybeSetupSudoku: async (tx, args) => {
+         const game = await tx.get("game");
+         if (!game) {
+            await tx.set("game", { started: true })
+         }
+         const cells = await tx.scan({ prefix: "cells/" }).entries().toArray();
+         if (cells.length !== 81) {
+            let i = 0;
+            const board = generateSudoku(81);
+            for (const cell of board) {
+               await tx.set(cell.key, cell.data)
+            }
+         }
+      },
+      // example presence mutator
       setPresence: async (tx, args) => {
          await tx.set('presence/'+args.clientId, { updatedAt: Date.now(), clientId: args.clientId, cursorPosition: args.cursorPosition})
       },
+      // example add todo mutator
       addTodo: async (tx, args) => {
          await tx.set('todo/'+args.id, { id: args.id, title: args.title, completed: false })
       }
