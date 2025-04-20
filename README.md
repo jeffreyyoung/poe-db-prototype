@@ -18,6 +18,7 @@ const rep = new Replicache({
 
 
 rep.subscribe(async (tx) => {
+  // tx.set is not available.  Subscribe provides a read only transaction
   const todos = await tx.scan({ prefix: "todo/" }).values().toArray();
   return todos;
 }, (todos) => {

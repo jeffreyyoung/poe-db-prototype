@@ -22,17 +22,18 @@ const rep = new Replicache({
    pullDelay: 20,
 })
 
-
-rep.subscribe(async (tx) => {
-  const todos = await tx.scan({ prefix: "todo/" }).values().toArray();
-  return todos;
-}, (todos) => {
-  console.log(todos);
-})
-
-
 const randId = () => Date.now()+Math.floor(Math.random()*1000000)
 rep.mutate.addTodo({ title: "buy an apple", id: randId() })
+
+rep.subscribe(async (tx) => {
+  // tx is a read only transaction.  .set and .del are not available.
+  const todos = await tx.scan({ prefix: "todo/" }).entries().toArray();
+  return todos;
+}, (todos) => {
+  console.log(todos); // todos is an array of [key, value] pairs
+})
+
+const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~
 ~~~~
 
