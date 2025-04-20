@@ -48,7 +48,7 @@ rep.observeEntries("todo/", (entries, changes) => {
       addToDom(key, value);
    })
    changes.changed.forEach(([key, value]) => {
-      updateDom(key, value)
+      addOrUpdateDom(key, value)
    })
    changes.removed.forEach(([key, value]) => {
       removeFromDom(key)
