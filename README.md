@@ -3,20 +3,17 @@
 ~~~~
 @gpt-4.1 @app-creator @claude-3.7-sonnet Create a collaborative drawing app. Here are the requirements:
 - Use replicache as the source of truth for all synced data. (don't throttle or batch writes)
-- Store each line in replicache using the key "lines/<id>".
-- Each point of the line should be displayed to as it is drawn.  Do not wait for mouse up to draw the line.
-- Have a mutator that adds a point to a line.  It should also create the line if it doesn't exist.
+- If a user is drawing, or typing, write each change to replicache. Ex: call rep.mutate.updateTodo({ id, text }) each time the user types a character
 - Show each user's cursor as it moves around the screen.
-- Show a list of online users.
-- Avoid global variables and generally avoid storing state outside of replicache.  Use rep.subscribeToScanEntries to react to added, removed, and changed entries
-- Assign each cursor a unique color and a unique name.
-- The UI should be fun and colorful.
-- DO NOT USE LOCALSTORAGE or any persistence api.  You are in a sandboxed iframe. Replicache handles persistence
 - Use await rep.getClientId() to get a unique identifier for the current client
+- When a user first loads the page, assign them a fun unique color and name.
+- Avoid global variables and generally avoid storing state outside of replicache. 
+- Use rep.subscribeToScanEntries to update the UI with added, removed, and changed entries
+- DO NOT USE LOCALSTORAGE or any persistence api. You are in a sandboxed iframe. Replicache handles persistence
 ~~~
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@d8c9a5ba14c88d047706db9e361fb49efa26bdeb/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@af38f2821f3698ba3dbcfbb0bb4264bae39ec476/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -74,7 +71,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@d8c9a5ba14c88d047706db9e361fb49efa26bdeb/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@af38f2821f3698ba3dbcfbb0bb4264bae39ec476/synced-state.js"
 
 
 setup({
@@ -101,7 +98,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@d8c9a5ba14c88d047706db9e361fb49efa26bdeb/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@af38f2821f3698ba3dbcfbb0bb4264bae39ec476/actions.js"
 
 
 setup({
