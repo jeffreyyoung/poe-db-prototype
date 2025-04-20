@@ -383,6 +383,7 @@ var ReplicacheCore = class {
     pendingMutations: []
   };
   latestMutationId = 0;
+  #clientId = Date.now() + Math.random().toString(36).substring(2, 15);
   /**
    * each time we run a subscription, we keep track of the keys that were accessed
    */
@@ -420,6 +421,9 @@ var ReplicacheCore = class {
     this.latestMutationId = pullResponse.lastMutationId;
     this.removeCompletedLocalMutations(completedLocalMutationIds);
     this.#subscriptionManager.notifySubscribers(changedKeys);
+  }
+  getClientId() {
+    return Promise.resolve(this.#clientId);
   }
   async mutate(mutatorName, args, localMutationId) {
     const snapshot = createStoreSnapshot(this.store);
@@ -487,7 +491,6 @@ var createReplicacheCore_default = ReplicacheCore;
 // replicache.ts
 var Replicache = class {
   #core;
-  #clientId;
   #enqueuePull;
   #enqueuePush;
   #networkClient;
@@ -495,7 +498,6 @@ var Replicache = class {
   constructor(options) {
     this.options = options;
     this.#core = new createReplicacheCore_default(this.options);
-    this.#clientId = Date.now() + Math.random().toString(36).substring(2, 15);
     this.#enqueuePull = throttle(
       this.#doPull.bind(this),
       options.pullDelay ?? 20,
@@ -535,7 +537,7 @@ var Replicache = class {
     window.rep = this;
   }
   getClientId() {
-    return Promise.resolve(this.#clientId);
+    return this.#core.getClientId();
   }
   async #startPolling() {
     if (typeof Deno !== "undefined") {
@@ -564,7 +566,6 @@ var Replicache = class {
     return this.#core.subscribe(queryCb, onQueryCbChanged);
   }
   async #doPull() {
-    console.log("starting pull");
     const result = await this.#networkClient.pull({
       spaceId: this.options.spaceID,
       afterMutationId: this.#core.latestMutationId

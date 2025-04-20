@@ -11,7 +11,6 @@ import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
 
 export class Replicache {
   #core: ReplicacheCore;
-  #clientId: string;
   #enqueuePull: ReturnType<typeof throttle<unknown>>;
   #enqueuePush: ReturnType<typeof throttle<unknown>>;
   #networkClient: NetworkClient;
@@ -31,7 +30,6 @@ export class Replicache {
   constructor(options: typeof Replicache.prototype.options) {
     this.options = options;
     this.#core = new ReplicacheCore(this.options);
-    this.#clientId = Date.now() + Math.random().toString(36).substring(2, 15);
     this.#enqueuePull = throttle(
       this.#doPull.bind(this),
       options.pullDelay ?? 20,
@@ -75,7 +73,7 @@ export class Replicache {
   }
 
   getClientId() {
-    return Promise.resolve(this.#clientId);
+    return this.#core.getClientId();
   }
 
   async #startPolling() {
@@ -118,7 +116,6 @@ export class Replicache {
 
 
   async #doPull() {
-    console.log("starting pull");
     const result = await this.#networkClient.pull({
       spaceId: this.options.spaceID,
       afterMutationId: this.#core.latestMutationId

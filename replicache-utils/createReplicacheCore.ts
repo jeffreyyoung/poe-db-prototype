@@ -19,6 +19,7 @@ export class ReplicacheCore {
   };
 
   latestMutationId = 0;
+  #clientId = Date.now() + Math.random().toString(36).substring(2, 15);
 
   /**
    * each time we run a subscription, we keep track of the keys that were accessed
@@ -70,6 +71,10 @@ export class ReplicacheCore {
     this.latestMutationId = pullResponse.lastMutationId;
     this.removeCompletedLocalMutations(completedLocalMutationIds);
     this.#subscriptionManager.notifySubscribers(changedKeys);
+  }
+
+  getClientId() {
+    return Promise.resolve(this.#clientId);
   }
 
   async mutate(
