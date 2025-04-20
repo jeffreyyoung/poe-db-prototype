@@ -2,14 +2,18 @@
 # Replicache
 ~~~~
 Create a collaborative drawing app. Here are the requirements:
+- Use replicache as the source of truth for all synced data. (don't throttle or batch writes)
+- Store each line in replicache using the key "lines/<id>".
+- Don't wait for the user to complete a line before writing it to replicache.  Just write each point as it happens.
+- Have a  mutator that adds a point to a line.  It should also create the line if it doesn't exist.
 - Show each user's cursor as it moves around the screen.
 - Show a list of online users.
-- Store each line in replicache using the key "lines/<id>".
-- Don't wait for the user to complete a line before writing it to "lines/<id>".  Just write each point as it happens.
+- Assign each cursor a unique color and a unique name.
+- The UI should be fun and colorful.
 ~~~
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@23a2d9b3f63f87110e3bbb615e45b3b8611931d0/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@027bf7330daa9e645eb11e9c648c5db9958e7a79/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -60,7 +64,7 @@ rep.subscribeToScanEntries("todo/", (entries, changes) => {
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@23a2d9b3f63f87110e3bbb615e45b3b8611931d0/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@027bf7330daa9e645eb11e9c648c5db9958e7a79/synced-state.js"
 
 
 setup({
@@ -87,7 +91,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@23a2d9b3f63f87110e3bbb615e45b3b8611931d0/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@027bf7330daa9e645eb11e9c648c5db9958e7a79/actions.js"
 
 
 setup({
