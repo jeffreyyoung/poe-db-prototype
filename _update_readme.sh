@@ -27,8 +27,18 @@ import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prot
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
    mutators: {
-    addTodo: async (tx, { title, id }) => {
+    createTodo: async (tx, { title, id }) => {
       await tx.set(\`todo/\${id}\`, { id, title, completed: false })
+    },
+    deleteTodo: async (tx, { id }) => {
+      await tx.del(\`todo/\${id}\`)
+    },
+    updateTodo: async (tx, { id, title, completed }) => {
+      const todo = await tx.get(\`todo/\${id}\`)
+      if (!todo) {
+         return;
+      }
+      await tx.set(\`todo/\${id}\`, { ...todo, title, completed })
     }
    },
    // do not reduce the pushDelay unless the user explicitly asks to reduce it
@@ -38,34 +48,30 @@ const rep = new Replicache({
 // unique id for this client
 const clientId = await rep.getClientId()
 const randId = () => Date.now()+Math.floor(Math.random()*1000000)
-rep.mutate.addTodo({ title: "buy an apple", id: randId() })
+rep.subscribeToScanEntries("todo/", (entries, changes) => {
+  // entries is an array of [key, value] pairs
+  // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
+  changes.added.forEach(([key, value]) => {
+     addToDom(key, value);
+  })
+  changes.changed.forEach(([key, value]) => {
+     updateDom(key, value);
+  })
+  changes.removed.forEach(([key, value]) => {
+     removeFromDom(key);
+  })
+})
+rep.mutate.createTodo({ title: "buy an apple", id: randId() })
 
 rep.subscribe(async (tx) => {
   // tx is a read only transaction.  .set and .del are not available.
   const todos = await tx.scan({ prefix: "todo/" }).entries().toArray();
-  return todos;
-}, (todos) => {
-  console.log(todos); // todos is an array of [key, value] pairs
+  return todos.length;
+}, (numTodos) => {
+  console.log(numTodos); // numTodos is the number of todos
 })
 
 const todo = await rep.query(tx => tx.get("todo/123"))
-
-
-// special new api
-// I recommend using observeEntries to render the ui
-rep.subscribeToScanEntries("todo/", (entries, changes) => {
-   // entries is an array of [key, value] pairs
-   // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
-   changes.added.forEach(([key, value]) => {
-      addToDom(key, value);
-   })
-   changes.changed.forEach(([key, value]) => {
-      addOrUpdateDom(key, value)
-   })
-   changes.removed.forEach(([key, value]) => {
-      removeFromDom(key)
-   })
-})
 ~~~
 ~~~~
 
