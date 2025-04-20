@@ -1,9 +1,9 @@
 
 # Replicache
 ~~~~
-Create a drawing canvas using this library.  Show each user's cursor as it moves around the canvas.
+Create a collaborative drawing app.  Show each user's cursor as it moves around the screen.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@bccc04e2fbc4dc0c140b2932ff794caf37f9ac32/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@6ac128ba4d4c3fcdff47f126e6edd85383c2af5b/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -12,8 +12,8 @@ const rep = new Replicache({
       await tx.set(`todo/${id}`, { id, title, completed: false })
     }
    },
-   pushDelay: 20,
-   pullDelay: 20,
+   pushDelay: 100,
+   pullDelay: 100,
 })
 
 const randId = () => Date.now()+Math.floor(Math.random()*1000000)
@@ -36,7 +36,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@bccc04e2fbc4dc0c140b2932ff794caf37f9ac32/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@6ac128ba4d4c3fcdff47f126e6edd85383c2af5b/synced-state.js"
 
 
 setup({
@@ -62,7 +62,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@bccc04e2fbc4dc0c140b2932ff794caf37f9ac32/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@6ac128ba4d4c3fcdff47f126e6edd85383c2af5b/actions.js"
 
 
 setup({
