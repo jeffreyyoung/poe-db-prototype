@@ -7,6 +7,7 @@ import { throttle } from "./replicache-utils/throttlePromise.ts";
 import { createValTownNetworkClient } from "./replicache-utils/NetworkClientValTown.ts";
 import { NetworkClient, NetworkClientFactory } from "./replicache-utils/NetworkClient.ts";
 import ReplicacheCore from "./replicache-utils/createReplicacheCore.ts";
+import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
 
 export class Replicache {
   #core: ReplicacheCore;
@@ -118,6 +119,10 @@ export class Replicache {
       afterMutationId: this.#core.latestMutationId
     });
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter(m => m.status !== "waiting").map(m => m.mutation.id));
+  }
+
+  observeEntries(prefix: string, onChange: ObservePrefixOnChange) {
+    return this.#core.observeEntries(prefix, onChange);
   }
 
   get mutate() {

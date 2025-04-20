@@ -3,6 +3,7 @@
  */
 import { createReadTransaction } from "./createReadTransaction.ts";
 import { createWriteTransaction } from "./createWriteTransaction.ts";
+import { observePrefix, ObservePrefixOnChange } from "./observePrefix.ts";
 import type { PullResponse, PokeResult, Patch } from "./server-types.ts";
 import { createStoreSnapshot, Store } from "./Store.ts";
 import { createSubscriptionManager } from "./SubscriptionManager.ts";
@@ -124,6 +125,10 @@ export class ReplicacheCore {
       );
     }
     return this.#subscriptionManager.subscribe(queryCb, onQueryCbChanged);
+  }
+
+  observeEntries(prefix: string, onChange: ObservePrefixOnChange) {
+    return observePrefix(this, prefix, onChange);
   }
 
   #applyPatches(patches: Patch[]): Set<string> {

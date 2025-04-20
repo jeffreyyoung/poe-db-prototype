@@ -183,6 +183,9 @@ Deno.test("entries works", async () => {
             await tx.set(key, value);
           }   
         },
+        deleteKey: async (tx, key: string) => {
+          await tx.delete(key);
+        }
       },
     });
 
@@ -209,4 +212,9 @@ Deno.test("entries works", async () => {
 
     await rep.mutate("setKeys", { "not/in/subscription": "ok" }, 559)
     await entriesSpy.assertCallCount(5)
+
+
+    await rep.mutate("deleteKey", "words/1", 560)
+    await entriesSpy.assertCallCount(6);
+    await entriesSpy.assertLastCallArgs([[["words/2", "yay"]]])
 })

@@ -293,6 +293,23 @@ function createWriteTransaction(store) {
   };
 }
 
+// replicache-utils/observePrefix.ts
+function observePrefix(rep, prefix, onChange) {
+  let lastEntries = [];
+  return rep.subscribe(async (tx) => {
+    const entries = await tx.scan({ prefix }).entries().toArray();
+    return entries;
+  }, (entries) => {
+    const oldMap = new Map(lastEntries);
+    const newMap = new Map(entries);
+    const added = entries.filter(([key]) => !oldMap.has(key));
+    const removed = lastEntries.filter(([key]) => !newMap.has(key));
+    const changed = entries.filter(([key, value]) => oldMap.has(key) && oldMap.get(key) !== value);
+    lastEntries = entries;
+    onChange(entries, { added, removed, changed });
+  });
+}
+
 // replicache-utils/SubscriptionManager.ts
 function createSubscriptionManager(store) {
   const subscriptions = /* @__PURE__ */ new Map();
@@ -445,6 +462,9 @@ var ReplicacheCore = class {
     }
     return this.#subscriptionManager.subscribe(queryCb, onQueryCbChanged);
   }
+  observeEntries(prefix, onChange) {
+    return observePrefix(this, prefix, onChange);
+  }
   #applyPatches(patches) {
     const changedKeys = /* @__PURE__ */ new Set();
     for (const patch of patches) {
@@ -544,6 +564,9 @@ var Replicache = class {
       afterMutationId: this.#core.latestMutationId
     });
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id));
+  }
+  observeEntries(prefix, onChange) {
+    return this.#core.observeEntries(prefix, onChange);
   }
   get mutate() {
     return new Proxy(

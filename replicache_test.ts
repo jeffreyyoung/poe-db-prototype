@@ -38,7 +38,6 @@ Deno.test("test", async () => {
     console.log("pulling")
     await rep.pull()
     console.log("pulled")
-    console.log("latestMutationId", rep.latestMutationId)
     } catch (e) {
         console.error("nooooo", e)
         assertEquals(true, false)

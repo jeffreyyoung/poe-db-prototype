@@ -3,6 +3,8 @@
 ~~~~
 Create a collaborative drawing app.  Show each user's cursor as it moves around the screen.
 ~~~
+<script type="module">
+// replicache is an esmodule
 import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@d6d5905f7f94c77ce72302a959f9cfd1521e93ee/replicache.js"
 
 const rep = new Replicache({
@@ -28,6 +30,16 @@ rep.subscribe(async (tx) => {
 })
 
 const todo = await rep.query(tx => tx.get("todo/123"))
+
+
+// special new api
+// I recommend using observeEntries to render the ui
+repo.observeEntries("todo/", (entries, changes) => {
+   // entries is an array of [key, value] pairs
+   // changes.added, changes.removed, and changes.changed are each arrays of [key, value] pairs
+})
+
+</script>
 ~~~
 ~~~~
 
