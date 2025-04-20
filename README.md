@@ -3,7 +3,7 @@
 ~~~~
 Create a collaborative drawing app.  Show each user's cursor as it moves around the screen.
 ~~~
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@6ac128ba4d4c3fcdff47f126e6edd85383c2af5b/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@d6d5905f7f94c77ce72302a959f9cfd1521e93ee/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -36,7 +36,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@6ac128ba4d4c3fcdff47f126e6edd85383c2af5b/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@d6d5905f7f94c77ce72302a959f9cfd1521e93ee/synced-state.js"
 
 
 setup({
@@ -62,7 +62,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@6ac128ba4d4c3fcdff47f126e6edd85383c2af5b/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@d6d5905f7f94c77ce72302a959f9cfd1521e93ee/actions.js"
 
 
 setup({
