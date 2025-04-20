@@ -487,6 +487,7 @@ var createReplicacheCore_default = ReplicacheCore;
 // replicache.ts
 var Replicache = class {
   #core;
+  #clientId;
   #enqueuePull;
   #enqueuePush;
   #networkClient;
@@ -494,6 +495,7 @@ var Replicache = class {
   constructor(options) {
     this.options = options;
     this.#core = new createReplicacheCore_default(this.options);
+    this.#clientId = Date.now() + Math.random().toString(36).substring(2, 15);
     this.#enqueuePull = throttle(
       this.#doPull.bind(this),
       options.pullDelay ?? 20,
@@ -531,6 +533,9 @@ var Replicache = class {
   }
   #addToWindow() {
     window.rep = this;
+  }
+  getClientId() {
+    return Promise.resolve(this.#clientId);
   }
   async #startPolling() {
     if (typeof Deno !== "undefined") {

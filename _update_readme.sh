@@ -33,7 +33,8 @@ const rep = new Replicache({
    pushDelay: 100,
    pullDelay: 100,
 })
-
+// unique id for this client
+const clientId = await rep.getClientId()
 const randId = () => Date.now()+Math.floor(Math.random()*1000000)
 rep.mutate.addTodo({ title: "buy an apple", id: randId() })
 
