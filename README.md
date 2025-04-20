@@ -4,19 +4,19 @@
 Create a collaborative drawing app. Here are the requirements:
 - Use replicache as the source of truth for all synced data. (don't throttle or batch writes)
 - Store each line in replicache using the key "lines/<id>".
-- Display each point to all clients as it is drawn.  Do not wait for mouse up to draw the line.
+- Each point of the line should be displayed to as it is drawn.  Do not wait for mouse up to draw the line.
 - Have a mutator that adds a point to a line.  It should also create the line if it doesn't exist.
-- Use `rep.subscribeToScanEntries` api to render the line as it is drawn.
 - Show each user's cursor as it moves around the screen.
 - Show a list of online users.
+- Avoid global variables and generally avoid storing state outside of replicache.  Use rep.subscribeToScanEntries to react to added, removed, and changed entries
 - Assign each cursor a unique color and a unique name.
 - The UI should be fun and colorful.
 - DO NOT USE LOCALSTORAGE or any persistence api.  You are in a sandboxed iframe. Replicache handles persistence
-- Use await rep.getClientId() to get a unique identifier
+- Use await rep.getClientId() to get a unique identifier for the current client
 ~~~
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@6c7390f4a070c4d5ddf120fc1ebd77629e9e16c3/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9dcfa22d7c3d587c951bc0565ff8bddba30aec1b/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -68,7 +68,7 @@ rep.subscribeToScanEntries("todo/", (entries, changes) => {
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@6c7390f4a070c4d5ddf120fc1ebd77629e9e16c3/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9dcfa22d7c3d587c951bc0565ff8bddba30aec1b/synced-state.js"
 
 
 setup({
@@ -95,7 +95,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@6c7390f4a070c4d5ddf120fc1ebd77629e9e16c3/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9dcfa22d7c3d587c951bc0565ff8bddba30aec1b/actions.js"
 
 
 setup({
