@@ -2,6 +2,7 @@ import { assertEquals } from "@std/assert/equals";
 import ReplicacheCore from "./createReplicacheCore.ts";
 import { sleep } from "./sleep.ts";
 import { createSubscriptionSpy } from "./testHelpers.ts";
+import { runMutator } from "./sandbox/mutatorRunner.ts";
 
 Deno.test("basic queries work", async () => {
   const core = new ReplicacheCore({
@@ -218,3 +219,54 @@ Deno.test("entries works", async () => {
     await entriesSpy.assertCallCount(6);
     await entriesSpy.assertLastCallArgs([[["words/2", "yay"]]])
 })
+
+
+Deno.test("serialized mutators", async () => {
+  const rep = new ReplicacheCore({
+    mutators: {
+      jimSays: async (tx, arg) => {
+        const jimSays = await tx.get("jimSays");
+
+        return tx.set("pamSays", jimSays);
+      },
+      async hello(tx, arg) {
+        return tx.set(`hello/${arg.name}`, "hi");
+      },
+    },
+  });
+
+  
+  const result = await runMutator({
+    mutatorName: "jimSays",
+    args: {},
+    serializedMutatorFnString: rep.getSerializedFunctionString("jimSays"),
+    databaseEntries: [["jimSays", "hi"]]
+  })
+  assertEquals(result.result, "success")
+  assertEquals(result.changedEntries, [["pamSays", "hi"]])
+});
+
+Deno.test("serialized mutators 2", async () => {
+  return;
+  const rep = new ReplicacheCore({
+    mutators: {
+      jimSays: async (tx, arg) => {
+        const jimSays = await tx.get("jimSays");
+
+        return tx.set("pamSays", jimSays);
+      },
+      async hello(tx, arg) {
+        return tx.set(`hello/${arg.name}`, "hi");
+      },
+    },
+  });
+
+  const result2 = await runMutator({
+    mutatorName: "hello",
+    args: { name: "joe", age: 20 },
+    serializedMutatorFnString: rep.getSerializedFunctionString("hello"),
+    databaseEntries: [["hello/joe", "hi"]]
+  })
+  assertEquals(result2.result, "success")
+  assertEquals(result2.changedEntries, [["hello/joe", "hi"]])
+});

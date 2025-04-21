@@ -392,6 +392,16 @@ var ReplicacheCore = class {
   constructor(options) {
     this.options = options;
   }
+  getSerializedFunctionString(mutatorName) {
+    const mutator = this.options.mutators[mutatorName];
+    if (!mutator) {
+      throw new Error(`Mutator ${mutatorName} not found`);
+    }
+    const str = mutator.toString();
+    const funcStr = `{ invoke: ${str} }`;
+    console.log("funcStr!!!", funcStr);
+    return funcStr;
+  }
   processPokeResult(pokeResult) {
     console.log("received a poke", pokeResult.mutationIds, pokeResult);
     const maxMutationId = Math.max(...pokeResult.mutationIds);
