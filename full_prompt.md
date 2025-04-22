@@ -60,7 +60,6 @@ export declare class Replicache<Mutators extends Record<string, (tx: WriteTransa
     query: <T>(query: (tx: ReadTransaction) => Promise<T>) => Promise<T>;
     subscribe: <T>(query: (tx: ReadTransaction) => Promise<T>, onChange: (result: T) => void) => UnsubscribeFn;
     subscribeToScanEntries: (scanOptions: ScanOptions | string, onChange: (entries: [string, JsonValue][], changes: ChangeSummary) => void) => UnsubscribeFn;
-    getclientID: () => Promise<string>;
     mutate: {
         [K in keyof Mutators]: (args: Parameters<Mutators[K]>[1]) => Promise<ReturnType<Mutators[K]>>
     }

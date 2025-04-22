@@ -12,7 +12,7 @@ cat << EOF > README.md
 - Do not reference any global variables in a mutator.  Use rep.subscribeToScanEntries or rep.subscribe to react to changes.
 - If there is required initial state, have a mutator like \`async maybeSetupState(tx, args) {   if (!await tx.has("someField")) { tx.set("someField", { started: true })}}`
 - Define a presence mutator that might look like this: \`async setPresence(tx, args) { await tx.set("presence/\${args.clientId}", { updatedAt: Date.now(), clientId: args.clientId, cursorPosition: { x: 100, y: 100 }}) }`
-- Use await rep.getClientId() to get a unique identifier for the current client
+- Use await rep.query(tx => tx.clientID) to get a unique identifier for the current client
 - When a client first loads the page, assign them a fun unique color and name.
 - Use rep.subscribeToScanEntries to update the UI with added, removed, and changed entries
 - Avoid rewriting entire html elements, instead update the contents of the element.
@@ -80,7 +80,7 @@ rep.subscribeToScanEntries("presence/", (entries, changes) => {
      updateDom(key, value);
   })
 })
-const clientId = await rep.getClientId()
+const clientId = await rep.query(tx => tx.clientID)
 rep.mutate.setPresence({ clientId, updatedAt: Date.now(), cursorPosition: { x: 100, y: 100 }})
 rep.mutate.addTodo({ id: 123, title: "buy an apple" })
 rep.subscribe(async (tx) => {
