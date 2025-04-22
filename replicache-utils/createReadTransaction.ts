@@ -1,16 +1,19 @@
 import { Store, get, has, keys as getKeysSet } from "./Store.ts";
+import type { ReadTransaction, ScanOptions } from "./replicache-types.ts";
+type ScanObjectArg = ScanOptions;
+export type ScanArg = ScanObjectArg
 
-type ScanObjectArg = { from?: string, to?: string, prefix?: string, limit?: number }
-export type ScanArg = ScanObjectArg | string
-
-export function scanArgToObject(arg: ScanArg): ScanObjectArg {
+export function scanArgToObject(arg: ScanArg): Exclude<ScanObjectArg, string> {
     if (typeof arg === "string") {
         return { prefix: arg }
     }
     return arg
 }
 
-export function createReadTransaction(store: Store) {
+type ReadTransactionWithKeys = ReadTransaction & { _readKeys: Set<string>, _scannedKeys: Set<string> }
+
+
+export function createReadTransaction(store: Store, clientID: string): ReadTransactionWithKeys {
     const _readKeys = new Set<string>();
     const _scannedKeys = new Set<string>();
     const readValue = (key: string) => {
@@ -18,7 +21,8 @@ export function createReadTransaction(store: Store) {
         return get(store, key);
     }
 
-    return {
+    const tx: ReadTransactionWithKeys = {
+        clientID,
         _readKeys,
         _scannedKeys,
         get(key: string) {
@@ -32,26 +36,22 @@ export function createReadTransaction(store: Store) {
             const keySet = getKeysSet(store);
             return Promise.resolve(keySet.size === 0);
         },
-        size() {
-            const keySet = getKeysSet(store);
-            return Promise.resolve(keySet.size);
-        },
         scan(arg: ScanArg) {
-            const { from, to, prefix, limit } = scanArgToObject(arg);
+            const { start,prefix, limit } = scanArgToObject(arg);
             const keySet = getKeysSet(store);
             let keys = Array.from(keySet).sort();
             if (prefix) {
                 keys = keys.filter((key) => key.startsWith(prefix));
             }
-            if (from) {
-                keys = keys.slice(keys.indexOf(from));
+            
+            if (start) {
+                keys = handleStart(keys, start);
             }
-            if (to) {
-                keys = keys.slice(0, keys.indexOf(to));
-            }
+
             if (limit) {
                 keys = keys.slice(0, limit);
             }
+            
             const getNthKey = (index: number) => {
                 _scannedKeys.add(keys[index]);
                 return keys[index];
@@ -67,9 +67,24 @@ export function createReadTransaction(store: Store) {
                 [Symbol.asyncIterator]() {
                     return mapAsyncIterator(keyAsyncIterable(getNthKey, keys.length), readValue);
                 }
-            }
+            } as any;
         }
     }
+    return tx;
+}
+
+function handleStart(keys: string[], start: Exclude<ScanOptions, string>["start"]) {
+    if (!start) {
+        return keys;
+    }
+    let startIndex = keys.indexOf(start.key);
+    if (startIndex === -1) {
+        return keys;
+    }
+    if (start.exclusive) {
+        return keys.slice(startIndex + 1);
+    }
+    return keys.slice(startIndex);
 }
 
 function keyAsyncIterable(getNthKey: (index: number) => string, totalKeys: number) {

@@ -9,7 +9,6 @@ export type NetworkClient = {
   pull: (args: {
     spaceId: string;
     afterMutationId: number;
-    serializedMutators: string;
   }) => Promise<PullResponse>;
   push: (args: Omit<PushRequest, "operations">) => Promise<PushResponse>;
 };

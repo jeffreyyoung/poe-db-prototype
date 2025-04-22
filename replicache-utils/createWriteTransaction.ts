@@ -2,8 +2,8 @@ import { createReadTransaction } from "./createReadTransaction.ts";
 import { Store } from "./Store.ts";
 import { Operation } from "./server-types.ts";
 
-export function createWriteTransaction(store: Store) {
-  const tx = createReadTransaction(store);
+export function createWriteTransaction(store: Store, clientID: string) {
+  const tx = createReadTransaction(store, clientID);
   const writeOperations: Operation[] = [];
 
   return {

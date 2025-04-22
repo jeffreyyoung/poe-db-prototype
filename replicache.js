@@ -178,14 +178,15 @@ function scanArgToObject(arg) {
   }
   return arg;
 }
-function createReadTransaction(store) {
+function createReadTransaction(store, clientID) {
   const _readKeys = /* @__PURE__ */ new Set();
   const _scannedKeys = /* @__PURE__ */ new Set();
   const readValue = (key) => {
     _readKeys.add(key);
     return get(store, key);
   };
-  return {
+  const tx = {
+    clientID,
     _readKeys,
     _scannedKeys,
     get(key) {
@@ -199,22 +200,15 @@ function createReadTransaction(store) {
       const keySet = keys(store);
       return Promise.resolve(keySet.size === 0);
     },
-    size() {
-      const keySet = keys(store);
-      return Promise.resolve(keySet.size);
-    },
     scan(arg) {
-      const { from, to, prefix, limit } = scanArgToObject(arg);
+      const { start, prefix, limit } = scanArgToObject(arg);
       const keySet = keys(store);
       let keys2 = Array.from(keySet).sort();
       if (prefix) {
         keys2 = keys2.filter((key) => key.startsWith(prefix));
       }
-      if (from) {
-        keys2 = keys2.slice(keys2.indexOf(from));
-      }
-      if (to) {
-        keys2 = keys2.slice(0, keys2.indexOf(to));
+      if (start) {
+        keys2 = handleStart(keys2, start);
       }
       if (limit) {
         keys2 = keys2.slice(0, limit);
@@ -236,6 +230,20 @@ function createReadTransaction(store) {
       };
     }
   };
+  return tx;
+}
+function handleStart(keys2, start) {
+  if (!start) {
+    return keys2;
+  }
+  let startIndex = keys2.indexOf(start.key);
+  if (startIndex === -1) {
+    return keys2;
+  }
+  if (start.exclusive) {
+    return keys2.slice(startIndex + 1);
+  }
+  return keys2.slice(startIndex);
 }
 function keyAsyncIterable(getNthKey, totalKeys) {
   return {
@@ -271,8 +279,8 @@ async function* mapAsyncIterator(asyncIterator, mapFn) {
 }
 
 // replicache-utils/createWriteTransaction.ts
-function createWriteTransaction(store) {
-  const tx = createReadTransaction(store);
+function createWriteTransaction(store, clientID) {
+  const tx = createReadTransaction(store, clientID);
   const writeOperations = [];
   return {
     ...tx,
@@ -314,10 +322,10 @@ function observePrefix(rep, scanArg, onChange) {
 }
 
 // replicache-utils/SubscriptionManager.ts
-function createSubscriptionManager(store) {
+function createSubscriptionManager(store, clientID) {
   const subscriptions = /* @__PURE__ */ new Map();
   async function _runQuery(queryFn) {
-    const tx = createReadTransaction(store);
+    const tx = createReadTransaction(store, clientID);
     const result = await queryFn(tx);
     return { result, tx };
   }
@@ -387,7 +395,7 @@ var ReplicacheCore = class {
   /**
    * each time we run a subscription, we keep track of the keys that were accessed
    */
-  #subscriptionManager = createSubscriptionManager(this.store);
+  #subscriptionManager = createSubscriptionManager(this.store, this.#clientId);
   options;
   constructor(options) {
     this.options = options;
@@ -440,7 +448,7 @@ var ReplicacheCore = class {
   }
   async mutate(mutatorName, args, localMutationId) {
     const snapshot = createStoreSnapshot(this.store);
-    const tx = createWriteTransaction(snapshot);
+    const tx = createWriteTransaction(snapshot, this.#clientId);
     const result = await this.options.mutators[mutatorName](tx, args);
     const kvUpdates = /* @__PURE__ */ new Map();
     for (const op of tx._writeOperations) {
@@ -465,7 +473,7 @@ var ReplicacheCore = class {
     return result;
   }
   async query(cb) {
-    const tx = createReadTransaction(this.store);
+    const tx = createReadTransaction(this.store, this.#clientId);
     const result = await cb(tx);
     return result;
   }
@@ -501,12 +509,25 @@ var ReplicacheCore = class {
 };
 var createReplicacheCore_default = ReplicacheCore;
 
+// replicache-utils/hash.ts
+function simpleHash(str) {
+  let hash = 0;
+  if (str.length === 0) return hash;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
 // replicache.ts
 var Replicache = class {
   #core;
   #enqueuePull;
   #enqueuePush;
   #networkClient;
+  #spaceId;
   options;
   constructor(options) {
     this.options = options;
@@ -523,8 +544,12 @@ var Replicache = class {
     );
     this.#startPolling();
     const createNetworkClient = this.options.networkClientFactory ?? createValTownNetworkClient;
+    this.#spaceId = this.options.spaceID || "";
+    if (!this.#spaceId) {
+      this.#spaceId = "space" + simpleHash(Object.entries(this.options.mutators).map(([key, value]) => key + value.toString()).join("_"));
+    }
     this.#networkClient = createNetworkClient({
-      spaceId: this.options.spaceID,
+      spaceId: this.#spaceId,
       onPoke: (poke) => {
         const { shouldPull } = this.#core.processPokeResult(poke);
         if (shouldPull) {
@@ -580,7 +605,7 @@ var Replicache = class {
   }
   async #doPull() {
     const result = await this.#networkClient.pull({
-      spaceId: this.options.spaceID,
+      spaceId: this.#spaceId,
       afterMutationId: this.#core.latestMutationId
     });
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id));

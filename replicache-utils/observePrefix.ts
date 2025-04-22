@@ -1,12 +1,9 @@
 import { ScanArg } from "./createReadTransaction.ts";
 import ReplicacheCore from "./createReplicacheCore.ts";
+import { JsonValue, ChangeSummary, ScanOptions } from "./replicache-types.ts";
 
-export type ChangeSummary = {
-    added: [string, any][],
-    removed: [string, any][],
-    changed: [string, any][]
-};
-export type ObservePrefixOnChange = (entries: [string, any][], changes: ChangeSummary) => void;
+
+export type ObservePrefixOnChange = (entries: [string, JsonValue][], changes: ChangeSummary) => void;
 
 
 

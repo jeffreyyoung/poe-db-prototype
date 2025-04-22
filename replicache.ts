@@ -7,15 +7,19 @@ import { throttle } from "./replicache-utils/throttlePromise.ts";
 import { createValTownNetworkClient } from "./replicache-utils/NetworkClientValTown.ts";
 import { NetworkClient, NetworkClientFactory } from "./replicache-utils/NetworkClient.ts";
 import ReplicacheCore from "./replicache-utils/createReplicacheCore.ts";
-import { ChangeSummary, ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
+import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
+import { ChangeSummary } from "./replicache-utils/replicache-types.ts";
+import type { ReadTransaction, Replicache as ReplicacheType } from "./replicache-utils/replicache-types.ts";
+import { simpleHash } from "./replicache-utils/hash.ts";
 
-export class Replicache {
+export class Replicache implements ReplicacheType<Record<string, any>> {
   #core: ReplicacheCore;
   #enqueuePull: ReturnType<typeof throttle<unknown>>;
   #enqueuePush: ReturnType<typeof throttle<unknown>>;
   #networkClient: NetworkClient;
+  #spaceId: string;
   options: {
-    spaceID: string;
+    spaceID?: string;
     mutators: Record<
       string,
       (
@@ -42,8 +46,13 @@ export class Replicache {
     );
     this.#startPolling();
     const createNetworkClient = this.options.networkClientFactory ?? createValTownNetworkClient;
+    this.#spaceId = this.options.spaceID || "";
+    if (!this.#spaceId) {
+      this.#spaceId = 'space'+simpleHash(Object.entries(this.options.mutators).map(([key,value]) => key+value.toString()).join("_"));
+    }
+
     this.#networkClient = createNetworkClient({
-      spaceId: this.options.spaceID,
+      spaceId: this.#spaceId,
       onPoke: (poke) => {
         const { shouldPull } = this.#core.processPokeResult(poke);
         if (shouldPull) {
@@ -91,7 +100,7 @@ export class Replicache {
 
   query(
     cb: (
-      tx: ReturnType<typeof createReadTransaction>
+      tx: ReadTransaction
     ) => Promise<any>
   ) {
     return this.#core.query(cb);
@@ -99,7 +108,7 @@ export class Replicache {
 
   subscribe(
     queryCb: (
-      tx: ReturnType<typeof createReadTransaction>
+      tx: ReadTransaction
     ) => Promise<any>,
     onQueryCbChanged: (res: any) => void
   ) {
@@ -117,8 +126,8 @@ export class Replicache {
 
   async #doPull() {
     const result = await this.#networkClient.pull({
-      spaceId: this.options.spaceID,
-      afterMutationId: this.#core.latestMutationId
+      spaceId: this.#spaceId,
+      afterMutationId: this.#core.latestMutationId,
     });
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter(m => m.status !== "waiting").map(m => m.mutation.id));
   }

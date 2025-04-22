@@ -26,11 +26,14 @@ Deno.test("reactivity works with conditional logic", async () => {
         { amount, from, to }: { amount: number; from: string; to: string }
       ) {
         const fromBalance = (await tx.get(`balance/${from}`)) ?? 0;
+        // @ts-ignore
         if (fromBalance < amount) {
           return false;
         }
         const toBalance = (await tx.get(`balance/${to}`)) ?? 0;
+        // @ts-ignore
         tx.set(`balance/${from}`, fromBalance - amount);
+        // @ts-ignore
         tx.set(`balance/${to}`, toBalance + amount);
         return true;
       },

@@ -7,7 +7,7 @@ import { observePrefix, ObservePrefixOnChange } from "./observePrefix.ts";
 import type { PullResponse, PokeResult, Patch } from "./server-types.ts";
 import { createStoreSnapshot, Store } from "./Store.ts";
 import { createSubscriptionManager } from "./SubscriptionManager.ts";
-
+import { ReadTransactionWithKeys as ReadTransaction } from "./replicache-internal-types.ts";
 /**
  * This class has no network related code.  It handles all core logic.  Anything that directly interacts with the store
  * should be defined here.
@@ -24,7 +24,7 @@ export class ReplicacheCore {
   /**
    * each time we run a subscription, we keep track of the keys that were accessed
    */
-  #subscriptionManager = createSubscriptionManager(this.store);
+  #subscriptionManager = createSubscriptionManager(this.store, this.#clientId);
   options: {
     mutators: Record<
       string,
@@ -113,7 +113,7 @@ export class ReplicacheCore {
     localMutationId: number
   ) {
     const snapshot = createStoreSnapshot(this.store);
-    const tx = createWriteTransaction(snapshot);
+    const tx = createWriteTransaction(snapshot, this.#clientId);
     const result = await this.options.mutators[mutatorName](tx, args);
     const kvUpdates = new Map();
     for (const op of tx._writeOperations) {
@@ -142,13 +142,13 @@ export class ReplicacheCore {
   async query(
     cb: (tx: ReturnType<typeof createReadTransaction>) => Promise<any>
   ) {
-    const tx = createReadTransaction(this.store);
+    const tx = createReadTransaction(this.store, this.#clientId);
     const result = await cb(tx);
     return result;
   }
 
   subscribe(
-    queryCb: (tx: ReturnType<typeof createReadTransaction>) => Promise<any>,
+    queryCb: (tx: ReadTransaction) => Promise<any>,
     onQueryCbChanged: (res: any) => void
   ) {
     if (typeof queryCb !== "function") {
