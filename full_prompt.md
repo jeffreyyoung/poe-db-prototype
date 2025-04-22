@@ -1,13 +1,14 @@
-### General rules
+General rules
 - Never use local storage. They are not enabled in this environment.
 - Use a <script type="module"> tag to define logic
 
-### Guidelines for using replicache
+Guidelines for using replicache
 - Never access global variables inside a mutator
 - Use rep.subscribe or rep.subscribeToScanEntries to subscribe to changes and update the DOM
+- Use the entry `key` to identify existing dom nodes.  Always update the existing DOM nodes if one exists.  If not create a new dom node.
 
 
-### Replicache typescript types
+Replicache typescript types
 
 ```
 export type JsonValue = string | number | boolean | JsonValue[] | { [key: string]: JsonValue | null };
@@ -67,7 +68,7 @@ export declare class Replicache<Mutators extends Record<string, (tx: WriteTransa
 ```
 
 
-### Examples
+Examples
 
 <example_todo_app_logic>
 import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@b4af8a9f215df026d1f6471cf99c6b4845ba7bcd/replicache.js"

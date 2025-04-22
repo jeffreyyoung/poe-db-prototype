@@ -9,4 +9,9 @@ export function simpleHash(str: string) {
     }
     
     return Math.abs(hash);
-  }
+}
+
+
+export function hashMutators(mutators: Record<string, any>) {
+    return 'mutators'+simpleHash(Object.entries(mutators).map(([key,value]) => key+value.toString()).join("_"));
+}
