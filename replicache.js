@@ -537,12 +537,12 @@ var Replicache = class {
     this.#core = new createReplicacheCore_default(this.options);
     this.#enqueuePull = throttle(
       this.#doPull.bind(this),
-      options.pullDelay ?? 20,
+      options.pullDelay ?? 50,
       true
     );
     this.#enqueuePush = throttle(
       this.#doPush.bind(this),
-      options.pushDelay ?? 20,
+      options.pushDelay ?? 50,
       true
     );
     this.#startPolling();
@@ -570,6 +570,11 @@ var Replicache = class {
     await this.#enqueuePush.getCurrentPromise()?.catch(() => {
     });
     return await this.#enqueuePull();
+  }
+  debug() {
+    return {
+      lastMutationId: this.#core.latestMutationId
+    };
   }
   push() {
     return this.#enqueuePush();
@@ -636,7 +641,7 @@ var Replicache = class {
           return async (args) => {
             const localMutationId = Math.floor(Math.random() * 9999999);
             await this.#core.mutate(mutatorName, args, localMutationId);
-            await this.push();
+            this.push();
           };
         }
       }
