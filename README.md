@@ -5,7 +5,7 @@
 - Use replicache as the source of truth for all synced data. (don't throttle or batch writes)
 - Do not reference any global variables in a mutator.  Use rep.subscribeToScanEntries or rep.subscribe to react to changes.
 - If there is required initial state, have a mutator like `async maybeSetupState(tx, args) {   if (!await tx.has("someField")) { tx.set("someField", { started: true })}}
-- Use await rep.getClientId() to get a unique identifier for the current client
+- Use await rep.query(tx => tx.clientID) to get a unique identifier for the current client
 - When a client first loads the page, assign them a fun unique color and name.
 - Use rep.subscribeToScanEntries to update the UI with added, removed, and changed entries
 - Avoid rewriting entire html elements, instead update the contents of the element.
@@ -16,7 +16,7 @@ This is some example usage of the replicache library.
 <html>
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@7826ac10e453b4a799eb5be7241407130ade2615/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@edd29aaf68a985ea55756aba8e9f6019f1032828/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -73,7 +73,7 @@ rep.subscribeToScanEntries("presence/", (entries, changes) => {
      updateDom(key, value);
   })
 })
-const clientId = await rep.getClientId()
+const clientId = await rep.query(tx => tx.clientID)
 rep.mutate.setPresence({ clientId, updatedAt: Date.now(), cursorPosition: { x: 100, y: 100 }})
 rep.mutate.addTodo({ id: 123, title: "buy an apple" })
 rep.subscribe(async (tx) => {
@@ -95,7 +95,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@7826ac10e453b4a799eb5be7241407130ade2615/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@edd29aaf68a985ea55756aba8e9f6019f1032828/synced-state.js"
 
 
 setup({
@@ -122,7 +122,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@7826ac10e453b4a799eb5be7241407130ade2615/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@edd29aaf68a985ea55756aba8e9f6019f1032828/actions.js"
 
 
 setup({
