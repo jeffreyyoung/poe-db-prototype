@@ -85,6 +85,10 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     return this.#core.getClientId();
   }
 
+  get clientID() {
+    return this.#core.getClientIdSync();
+  }
+
   async #startPolling() {
     if (typeof Deno !== "undefined") {
       console.log("Skipping Ably subscription in test environment");

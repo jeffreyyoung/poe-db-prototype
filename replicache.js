@@ -580,6 +580,9 @@ var Replicache = class {
   getClientId() {
     return this.#core.getClientId();
   }
+  get clientID() {
+    return this.#core.getClientIdSync();
+  }
   async #startPolling() {
     if (typeof Deno !== "undefined") {
       console.log("Skipping Ably subscription in test environment");

@@ -83,7 +83,7 @@ export const createValTownNetworkClient: NetworkClientFactory = ({
   };
 }
 
-function collapseMutations(mutations: Mutation[]): Mutation {
+export function collapseMutations(mutations: Mutation[]): Mutation {
     const kvUpdates = new Map<string, Mutation["operations"][number]>();
     for (const m of mutations) {
       for (const operation of m.operations) {
