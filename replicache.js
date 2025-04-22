@@ -520,6 +520,9 @@ function simpleHash(str) {
   }
   return Math.abs(hash);
 }
+function hashMutators(mutators) {
+  return "mutators" + simpleHash(Object.entries(mutators).map(([key, value]) => key + value.toString()).join("_"));
+}
 
 // replicache.ts
 var Replicache = class {
@@ -546,7 +549,7 @@ var Replicache = class {
     const createNetworkClient = this.options.networkClientFactory ?? createValTownNetworkClient;
     this.#spaceId = this.options.spaceID || "";
     if (!this.#spaceId) {
-      this.#spaceId = "space" + simpleHash(Object.entries(this.options.mutators).map(([key, value]) => key + value.toString()).join("_"));
+      this.#spaceId = "space" + hashMutators(this.options.mutators);
     }
     this.#networkClient = createNetworkClient({
       spaceId: this.#spaceId,

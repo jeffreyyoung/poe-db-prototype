@@ -10,7 +10,7 @@ import ReplicacheCore from "./replicache-utils/createReplicacheCore.ts";
 import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
 import { ChangeSummary } from "./replicache-utils/replicache-types.ts";
 import type { ReadTransaction, Replicache as ReplicacheType } from "./replicache-utils/replicache-types.ts";
-import { simpleHash } from "./replicache-utils/hash.ts";
+import { hashMutators, simpleHash } from "./replicache-utils/hash.ts";
 
 export class Replicache implements ReplicacheType<Record<string, any>> {
   #core: ReplicacheCore;
@@ -48,7 +48,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     const createNetworkClient = this.options.networkClientFactory ?? createValTownNetworkClient;
     this.#spaceId = this.options.spaceID || "";
     if (!this.#spaceId) {
-      this.#spaceId = 'space'+simpleHash(Object.entries(this.options.mutators).map(([key,value]) => key+value.toString()).join("_"));
+      this.#spaceId = 'space'+hashMutators(this.options.mutators);
     }
 
     this.#networkClient = createNetworkClient({
