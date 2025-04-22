@@ -102,11 +102,31 @@ Deno.test("subscription with multiple keys", async () => {
     await rep.mutate.setValue({ key: "notmeow/3", value: "test" });
     await sleep(500)
     assertSpyCalls(testSubscription, 2)
-    
-    
-
-    
 })
+
+
+Deno.test("mutation_ids", async () => {
+    const rep = new Replicache({
+        spaceID: "test"+Math.floor(Math.random()*9999999),
+        mutators: {
+            setValue: async (tx, { key, value }) => {
+                await tx.set(key, value)
+            }
+        },
+    });
+    // @ts-ignore
+    await rep.mutate.setValue({ key: "test", value: "test" })
+    await rep.push();
+    await rep.pull();
+    assertEquals(rep.debug().lastMutationId, 1, "mutation id should be 1")
+
+    // @ts-ignore
+    await rep.mutate.setValue({ key: "test", value: "test2" })
+    await rep.push();
+    await rep.pull();
+    assertEquals(rep.debug().lastMutationId, 2, "mutation id should be 2")
+})
+
 
 Deno.test("This one should fail because certain things are not cleaned up", () => {
     assertEquals(true, true, "yay");

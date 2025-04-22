@@ -36,12 +36,12 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     this.#core = new ReplicacheCore(this.options);
     this.#enqueuePull = throttle(
       this.#doPull.bind(this),
-      options.pullDelay ?? 20,
+      options.pullDelay ?? 50,
       true
     );
     this.#enqueuePush = throttle(
       this.#doPush.bind(this),
-      options.pushDelay ?? 20,
+      options.pushDelay ?? 50,
       true
     );
     this.#startPolling();
@@ -70,6 +70,12 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
   async pull() {
     await this.#enqueuePush.getCurrentPromise()?.catch(() => {})
     return await this.#enqueuePull()
+  }
+
+  debug(): { lastMutationId: number } {
+    return {
+      lastMutationId: this.#core.latestMutationId,
+    }
   }
 
   push() {
@@ -160,7 +166,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
           return async (args: any) => {
             const localMutationId = Math.floor(Math.random() * 9999999)
             await this.#core.mutate(mutatorName, args, localMutationId)
-            await this.push()
+            this.push() // push in background
           };
         },
       }
