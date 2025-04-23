@@ -521,6 +521,7 @@ function debugLogger() {
     return container;
   }
   async function log(type, message, ...args) {
+    console.log(type, message, ...args);
     if (!logPanel) {
       createLogPanel();
       await loadJsonFormatter();
