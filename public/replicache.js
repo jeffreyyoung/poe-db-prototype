@@ -65,11 +65,13 @@ var createValTownNetworkClient = ({
     const ably2 = getAbly();
     const channel = ably2.channels.get(spaceId);
     channel.subscribe("poke", (message) => {
+      console.log("network -- poke");
       onPoke(message.data);
     });
   }
   return {
     pull: async ({ spaceId: spaceId2, afterMutationId }) => {
+      console.log("network -- pull");
       const pullStart = Date.now();
       const response = await fetch(
         `${baseURL}/pull/${spaceId2}?afterMutationId=${afterMutationId}`
@@ -92,6 +94,7 @@ var createValTownNetworkClient = ({
       return data;
     },
     push: async (args) => {
+      console.log("network -- push");
       const mutations = args.mutations;
       const pushRequest = {
         mutations: mutations.map((m) => ({
