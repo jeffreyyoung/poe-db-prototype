@@ -74,13 +74,13 @@ export class ReplicacheCore {
     const minMutationId = Math.min(...pokeResult.mutationIds);
 
     if (minMutationId !== this.latestMutationId + 1) {
-      logger?.warn(this._loggerPrefix(), `/poke - out of order poke... triggering pull - poke contained ${pokeResult.mutationIds.length} mutations and ${pokeResult.patches.length} patches`)
+      console?.warn(this._loggerPrefix(), `/poke - out of order poke... triggering pull - poke contained ${pokeResult.mutationIds.length} mutations and ${pokeResult.patches.length} patches`)
       console.log(
         `pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${this.latestMutationId}`
       )
       return { shouldPull: true, localMutationIds: pokeResult.localMutationIds };
     }
-    logger?.info(this._loggerPrefix(), `/poke - in order poke... applying ${pokeResult.patches.length} patches - poke contained ${pokeResult.mutationIds.length} mutations and ${pokeResult.patches.length} patches`)
+    console?.info(this._loggerPrefix(), `/poke - in order poke... applying ${pokeResult.patches.length} patches - poke contained ${pokeResult.mutationIds.length} mutations and ${pokeResult.patches.length} patches`)
     // we can just apply the mutations and skip pulling
     this.removeCompletedLocalMutations(pokeResult.localMutationIds);
     const changedKeys = this.#applyPatches(pokeResult.patches);
