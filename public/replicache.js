@@ -583,7 +583,7 @@ var ReplicacheCore = class {
       console.log(
         `pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${this.latestMutationId}`
       );
-      return { shouldPull: true };
+      return { shouldPull: true, localMutationIds: pokeResult.localMutationIds };
     }
     logger?.info(`/poke - in order poke... applying ${pokeResult.patches.length} patches - poke contained mutations${pokeResult.mutationIds.join(", ")} - Current client mutation id: ${this.latestMutationId}`);
     console.log(`applying ${pokeResult.patches.length} patches`);
@@ -591,7 +591,7 @@ var ReplicacheCore = class {
     const changedKeys = this.#applyPatches(pokeResult.patches);
     this.latestMutationId = maxMutationId;
     this.#subscriptionManager.notifySubscribers(changedKeys);
-    return { shouldPull: false };
+    return { shouldPull: false, localMutationIds: pokeResult.localMutationIds };
   }
   removeCompletedLocalMutations(completedLocalMutationIds) {
     const completedSet = new Set(completedLocalMutationIds);
@@ -698,6 +698,7 @@ var Replicache = class {
   #networkClient;
   #spaceId;
   options;
+  #_debugLocalMutationIdToStartTime = /* @__PURE__ */ new Map();
   constructor(options) {
     this.options = options;
     this.#core = new createReplicacheCore_default(this.options);
@@ -720,10 +721,19 @@ var Replicache = class {
     this.#networkClient = createNetworkClient({
       spaceId: this.#spaceId,
       onPoke: (poke) => {
-        const { shouldPull } = this.#core.processPokeResult(poke);
+        const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
         if (shouldPull) {
           this.#enqueuePull();
         }
+        localMutationIds.forEach((id) => {
+          const startTime = this.#_debugLocalMutationIdToStartTime.get(id);
+          if (!startTime) {
+            return;
+          }
+          const endTime = Date.now();
+          const duration = endTime - startTime;
+          logger?.info(`/poke - took ${duration}ms to send mutation and get poke result containing ${poke.patches.length} patches`);
+        });
       },
       pullDelay: options.pullDelay ?? 100,
       pushDelay: options.pushDelay ?? 100
@@ -788,11 +798,11 @@ var Replicache = class {
         afterMutationId: this.#core.latestMutationId
       });
       let pullEnd = Date.now();
-      logger?.log(`/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches. Updated keys: ${result.patches.map((p) => p.key).join(", ")}`);
+      logger?.info(`/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches. Updated keys: ${result.patches.map((p) => p.key).join(", ")}`);
       this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id));
     } catch (e) {
       let pullEnd = Date.now();
-      logger?.log(`/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`);
+      logger?.error(`/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`);
     }
   }
   subscribeToScanEntries(scanArg, onChange) {
@@ -814,6 +824,7 @@ var Replicache = class {
           }
           return async (args) => {
             const localMutationId = Math.floor(Math.random() * 9999999);
+            this.#_debugLocalMutationIdToStartTime.set(localMutationId, Date.now());
             await this.#core.mutate(mutatorName, args, localMutationId);
             this.push();
           };
@@ -837,11 +848,11 @@ var Replicache = class {
       });
       notYetPushed.forEach((m) => m.status = "pushed");
       let pushEnd = Date.now();
-      logger?.log(`/push - success (${pushEnd - pushStart}ms) - Pushed ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map((m) => m.kvUpdates.keys()).flat().join(", ")}`);
+      logger?.info(`/push - success (${pushEnd - pushStart}ms) - Pushed ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map((m) => m.kvUpdates.keys()).flat().join(", ")}`);
     } catch (e) {
       console.error("Error pushing mutations", e);
       let pushEnd = Date.now();
-      logger?.log(`/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map((m) => m.kvUpdates.keys()).flat().join(", ")}. Error: ${e}`);
+      logger?.error(`/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map((m) => m.kvUpdates.keys()).flat().join(", ")}. Error: ${e}`);
       this.#core.store.pendingMutations = this.#core.store.pendingMutations.filter(
         (m) => !notYetPushed.includes(m)
       );

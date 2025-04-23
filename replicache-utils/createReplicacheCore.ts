@@ -65,7 +65,7 @@ export class ReplicacheCore {
     return funcStr;
   }
 
-  processPokeResult(pokeResult: PokeResult): { shouldPull: boolean } {
+  processPokeResult(pokeResult: PokeResult): { shouldPull: boolean, localMutationIds: number[] } {
     console.log("received a poke", pokeResult.mutationIds, pokeResult);
     const maxMutationId = Math.max(...pokeResult.mutationIds);
     const minMutationId = Math.min(...pokeResult.mutationIds);
@@ -75,7 +75,7 @@ export class ReplicacheCore {
       console.log(
         `pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${this.latestMutationId}`
       )
-      return { shouldPull: true };
+      return { shouldPull: true, localMutationIds: pokeResult.localMutationIds };
     }
     logger?.info(`/poke - in order poke... applying ${pokeResult.patches.length} patches - poke contained mutations${pokeResult.mutationIds.join(', ')} - Current client mutation id: ${this.latestMutationId}`)
     console.log(`applying ${pokeResult.patches.length} patches`);
@@ -84,7 +84,7 @@ export class ReplicacheCore {
     const changedKeys = this.#applyPatches(pokeResult.patches);
     this.latestMutationId = maxMutationId;
     this.#subscriptionManager.notifySubscribers(changedKeys);
-    return { shouldPull: false };
+    return { shouldPull: false, localMutationIds: pokeResult.localMutationIds };
   }
 
   removeCompletedLocalMutations(completedLocalMutationIds: number[]) {

@@ -1,7 +1,7 @@
 /**
  * Repli-Cache: A Replicache-compatible client with custom internals
  */
-import { createReadTransaction, ScanArg } from "./replicache-utils/createReadTransaction.ts";
+import { ScanArg } from "./replicache-utils/createReadTransaction.ts";
 import { createWriteTransaction } from "./replicache-utils/createWriteTransaction.ts";
 import { throttle } from "./replicache-utils/throttlePromise.ts";
 import { createValTownNetworkClient } from "./replicache-utils/NetworkClientValTown.ts";
@@ -10,7 +10,7 @@ import ReplicacheCore from "./replicache-utils/createReplicacheCore.ts";
 import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
 import { ChangeSummary } from "./replicache-utils/replicache-types.ts";
 import type { ReadTransaction, Replicache as ReplicacheType } from "./replicache-utils/replicache-types.ts";
-import { hashMutators, simpleHash } from "./replicache-utils/hash.ts";
+import { hashMutators } from "./replicache-utils/hash.ts";
 import { logger } from "./replicache-utils/debugLogger.ts";
 
 export class Replicache implements ReplicacheType<Record<string, any>> {
@@ -32,6 +32,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     pullDelay?: number;
     networkClientFactory?: NetworkClientFactory;
   };
+  #_debugLocalMutationIdToStartTime = new Map<number, number>();
   constructor(options: typeof Replicache.prototype.options) {
     this.options = options;
     this.#core = new ReplicacheCore(this.options);
@@ -55,10 +56,19 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     this.#networkClient = createNetworkClient({
       spaceId: this.#spaceId,
       onPoke: (poke) => {
-        const { shouldPull } = this.#core.processPokeResult(poke);
+        const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
         if (shouldPull) {
           this.#enqueuePull();
         }
+        localMutationIds.forEach(id => {
+          const startTime = this.#_debugLocalMutationIdToStartTime.get(id);
+          if (!startTime) {
+            return;
+          }
+          const endTime = Date.now();
+          const duration = endTime - startTime;
+          logger?.info(`/poke - took ${duration}ms to send mutation and get poke result containing ${poke.patches.length} patches`);
+        });
       },
       pullDelay: options.pullDelay ?? 100,
       pushDelay: options.pushDelay ?? 100,
@@ -143,11 +153,11 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       afterMutationId: this.#core.latestMutationId,
     });
     let pullEnd = Date.now();
-    logger?.log(`/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches. Updated keys: ${result.patches.map(p => p.key).join(", ")}`)
+    logger?.info(`/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches. Updated keys: ${result.patches.map(p => p.key).join(", ")}`)
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter(m => m.status !== "waiting").map(m => m.mutation.id));
   } catch (e) {
     let pullEnd = Date.now();
-    logger?.log(`/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`)
+    logger?.error(`/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`)
   }
   }
 
@@ -174,6 +184,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
 
           return async (args: any) => {
             const localMutationId = Math.floor(Math.random() * 9999999)
+            this.#_debugLocalMutationIdToStartTime.set(localMutationId, Date.now());
             await this.#core.mutate(mutatorName, args, localMutationId)
             this.push() // push in background
           };
@@ -201,13 +212,13 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       // now the pushed mutations are in push state
       notYetPushed.forEach((m) => (m.status = "pushed"));
       let pushEnd = Date.now();
-      logger?.log(`/push - success (${pushEnd - pushStart}ms) - Pushed ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}`)
+      logger?.info(`/push - success (${pushEnd - pushStart}ms) - Pushed ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}`)
     } catch (e) {
       console.error("Error pushing mutations", e);
       // roll back the mutations since this errored...
       // in real world we would retry
       let pushEnd = Date.now();
-      logger?.log(`/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}. Error: ${e}`)
+      logger?.error(`/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}. Error: ${e}`)
       this.#core.store.pendingMutations = this.#core.store.pendingMutations.filter(
         (m) => !notYetPushed.includes(m)
       );
