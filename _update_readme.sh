@@ -12,7 +12,8 @@ UPDATED_CONTENT=${TEMPLATE_CONTENT//__IMPORT_URL__/https:\/\/cdn.jsdelivr.net\/g
 # Write the updated content to prompt.md
 echo "$UPDATED_CONTENT" > prompt.md
 
-
+# read public/drawing2.html and replace the import url with the new url
+sed -i '' "s|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@.*|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js\"" public/drawing2.html
 
 cat << EOF > README.md
 
