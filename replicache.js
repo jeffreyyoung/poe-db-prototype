@@ -732,7 +732,7 @@ var Replicache = class {
           }
           const endTime = Date.now();
           const duration = endTime - startTime;
-          logger?.info(`/poke - took ${duration}ms to send mutation and get poke result containing ${poke.patches.length} patches`);
+          logger?.info(`/TIME ${duration}ms - local mutation ${id} took ${duration}ms to run locally and then receive server result. Result had ${poke.patches.length} patches`);
         });
       },
       pullDelay: options.pullDelay ?? 100,
