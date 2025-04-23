@@ -723,7 +723,7 @@ var Replicache = class {
         afterMutationId: this.#core.latestMutationId
       });
       let pullEnd = Date.now();
-      logger?.log(`/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches. Updated keys: ${result.patches.map((p) => p.kvUpdates.keys()).flat().join(", ")}`);
+      logger?.log(`/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches. Updated keys: ${result.patches.map((p) => p.key).join(", ")}`);
       this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id));
     } catch (e) {
       let pullEnd = Date.now();
