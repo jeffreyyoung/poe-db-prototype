@@ -823,7 +823,7 @@ var Replicache = class {
         afterMutationId: this.#core.latestMutationId
       });
       let pullEnd = Date.now();
-      logger?.info(this.#core._loggerPrefix(), `/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches. Updated keys: ${result.patches.map((p) => p.key).join(", ")}`);
+      logger?.info(this.#core._loggerPrefix(), `/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches.`);
       this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id));
     } catch (e) {
       let pullEnd = Date.now();
@@ -873,11 +873,11 @@ var Replicache = class {
       });
       notYetPushed.forEach((m) => m.status = "pushed");
       let pushEnd = Date.now();
-      logger?.info(this.#core._loggerPrefix(), `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.map((m) => m.mutation.id).join(", ")} mutations. Updated keys: ${notYetPushed.map((m) => Array.from(m.kvUpdates.keys())).flat().join(", ")}`);
+      logger?.info(this.#core._loggerPrefix(), `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.length} mutations.`);
     } catch (e) {
       console.error("Error pushing mutations", e);
       let pushEnd = Date.now();
-      logger?.error(this.#core._loggerPrefix(), `/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map((m) => m.kvUpdates.keys()).flat().join(", ")}. Error: ${e}`);
+      logger?.error(this.#core._loggerPrefix(), `/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Error: ${e}`);
       this.#core.store.pendingMutations = this.#core.store.pendingMutations.filter(
         (m) => !notYetPushed.includes(m)
       );
