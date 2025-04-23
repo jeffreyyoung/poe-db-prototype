@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Collaborative Drawing App</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .cursor {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: red;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="drawingCanvas"></canvas>
+    <div id="cursors"></div>
+
+    <script type="module">
+        import { SyncedMap } from "./SyncedMap.js";
+
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        const cursorsContainer = document.getElementById('cursors');
+        
+        // Set canvas size to window size
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Initialize SyncedMap
+        const map = new SyncedMap({
+            mutators: {
+                draw(db, { x, y, prevX, prevY, color }) {
+                    // Store the drawing data
+                    const key = `drawing-${Date.now()}`;
+                    db.set(key, { x, y, prevX, prevY, color });
+                },
+                updateCursor(db, { x, y, color }) {
+                    const clientId = db.clientId;
+                    db.set(`cursor-${clientId}`, { x, y, color });
+                }
+            }
+        });
+
+        // Wait for SyncedMap to be ready
+        await map.isReady();
+
+        // Drawing state
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF'];
+        const myColor = colors[Math.floor(Math.random() * colors.length)];
+
+        // Drawing functions
+        function draw(x, y, prevX, prevY, color) {
+            ctx.beginPath();
+            ctx.moveTo(prevX, prevY);
+            ctx.lineTo(x, y);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.closePath();
+        }
+
+        // Mouse event handlers
+        canvas.addEventListener('mousedown', (e) => {
+            isDrawing = true;
+            [lastX, lastY] = [e.clientX, e.clientY];
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            // Update cursor position
+            map.mutate('updateCursor', { 
+                x: e.clientX, 
+                y: e.clientY, 
+                color: myColor 
+            });
+
+            if (isDrawing) {
+                const x = e.clientX;
+                const y = e.clientY;
+                
+                // Draw locally
+                draw(x, y, lastX, lastY, myColor);
+                
+                // Sync with other users
+                map.mutate('draw', { 
+                    x, y, 
+                    prevX: lastX, 
+                    prevY: lastY, 
+                    color: myColor 
+                });
+                
+                [lastX, lastY] = [x, y];
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseout', () => isDrawing = false);
+
+        // Handle drawing changes from other users
+        map.scanWatch('drawing-', (entries) => {
+            entries.forEach(([_, value]) => {
+                draw(value.x, value.y, value.prevX, value.prevY, value.color);
+            });
+        });
+
+        // Handle cursor updates from other users
+        map.scanWatch('cursor-', (entries) => {
+            // Clear existing cursors
+            cursorsContainer.innerHTML = '';
+            
+            // Create new cursors
+            entries.forEach(([key, value]) => {
+                const cursor = document.createElement('div');
+                cursor.className = 'cursor';
+                cursor.style.left = `${value.x}px`;
+                cursor.style.top = `${value.y}px`;
+                cursor.style.backgroundColor = value.color;
+                cursorsContainer.appendChild(cursor);
+            });
+        });
+    </script>
+</body>
+</html>

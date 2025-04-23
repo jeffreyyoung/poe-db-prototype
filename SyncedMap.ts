@@ -88,7 +88,7 @@ export class SyncedMap implements ISyncedMap {
         const [writeableMap, changeMap] = createWriteableMap(this.replicache.clientID);
         const result = mutator(writeableMap, arg);
         // @ts-ignore
-        this.replicache.mutate.change(changeMap);
+        this.replicache.mutate.change({ changes: changeMap });
         return result;
     }
 

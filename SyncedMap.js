@@ -790,7 +790,7 @@ var SyncedMap = class {
     }
     const [writeableMap, changeMap] = createWriteableMap(this.replicache.clientID);
     const result = mutator(writeableMap, arg);
-    this.replicache.mutate.change(changeMap);
+    this.replicache.mutate.change({ changes: changeMap });
     return result;
   }
   isReady() {
