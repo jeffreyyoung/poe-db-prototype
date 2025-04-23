@@ -13,7 +13,15 @@ UPDATED_CONTENT=${TEMPLATE_CONTENT//__IMPORT_URL__/https:\/\/cdn.jsdelivr.net\/g
 echo "$UPDATED_CONTENT" > prompt.md
 
 # read public/drawing2.html and replace the import url with the new url
-sed -i '' "s|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@.*|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js\"" public/drawing2.html
+# Update the import URL in drawing2.html
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS version
+  sed -i '' "s|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@.*|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js\"|" public/drawing2.html
+else
+  # Linux/Unix version (no empty string needed)
+  sed -i "s|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@.*|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js\"|" public/drawing2.html
+fi
+
 
 cat << EOF > README.md
 
