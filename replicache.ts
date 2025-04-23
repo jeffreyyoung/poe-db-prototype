@@ -67,7 +67,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
           }
           const endTime = Date.now();
           const duration = endTime - startTime;
-          logger?.info(this.#core._loggerPrefix(), `mutation round trip time: ${duration}ms`);
+          logger?.info(this.#core._loggerPrefix(), `mutation round trip time: ${duration}ms, (run local mutation, send to server, receive server response)`);
         });
       },
       pullDelay: options.pullDelay ?? 100,
