@@ -1,5 +1,4 @@
 import { Replicache } from './replicache.js';
-import Logger from './logger.js';
 
 // Initialize Replicache
 const rep = new Replicache({
