@@ -25,3 +25,4 @@ export function createStore<T>(reducer: Reducer<T>) {
             return () => listeners.delete(listener);
         }
     }
+}
