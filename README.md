@@ -16,7 +16,7 @@ This is some example usage of the replicache library.
 <html>
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@2cb1d2a294c9a3f3dc974750b863aa2eb17b7147/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@5e1dd639135300fd6920778432ae018b7484ea15/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique
@@ -95,7 +95,7 @@ const todo = await rep.query(tx => tx.get("todo/123"))
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@2cb1d2a294c9a3f3dc974750b863aa2eb17b7147/synced-state.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@5e1dd639135300fd6920778432ae018b7484ea15/synced-state.js"
 
 
 setup({
@@ -122,7 +122,7 @@ action("addTodo", { text: "buy an apple" })
 ~~~~
 Create a todo list app using this library.
 ~~~
-import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@2cb1d2a294c9a3f3dc974750b863aa2eb17b7147/actions.js"
+import { setup, action } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@5e1dd639135300fd6920778432ae018b7484ea15/actions.js"
 
 
 setup({
