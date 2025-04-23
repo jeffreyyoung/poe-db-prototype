@@ -32,7 +32,9 @@ export type WriteTransaction = {
 export type ChangeSummary = {
     added: [string, JsonValue][];
     removed: [string, JsonValue][];
+    /* @deprecated Use modified instead */
     changed: [string, JsonValue][];
+    modified: [string, JsonValue][];
 }
 
 export type UnsubscribeFn = () => void;

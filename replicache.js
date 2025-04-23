@@ -324,7 +324,7 @@ function observePrefix(rep, scanArg, onChange) {
     const removed = lastEntries.filter(([key]) => !newMap.has(key));
     const changed = entries.filter(([key, value]) => oldMap.has(key) && oldMap.get(key) !== value);
     lastEntries = entries;
-    onChange(entries, { added, removed, changed });
+    onChange(entries, { added, removed, changed, modified: changed });
   });
 }
 

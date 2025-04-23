@@ -22,6 +22,6 @@ export function observePrefix(rep: ReplicacheCore, scanArg: ScanArg, onChange: O
         const changed = entries.filter(([key, value]) => oldMap.has(key) && oldMap.get(key) !== value);
 
         lastEntries = entries;
-        onChange(entries, { added, removed, changed });
+        onChange(entries, { added, removed, changed, modified: changed });
     });
 }
