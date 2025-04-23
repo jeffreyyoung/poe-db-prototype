@@ -705,7 +705,7 @@ var Replicache = class {
     } catch (e) {
       console.error("Error pushing mutations", e);
       let pushEnd = Date.now();
-      logger?.error(this.#core._loggerPrefix(), `/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Error: ${e}`);
+      console.error(this.#core._loggerPrefix(), `/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Error: ${e}`);
       this.#core.store.pendingMutations = this.#core.store.pendingMutations.filter(
         (m) => !notYetPushed.includes(m)
       );

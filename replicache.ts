@@ -226,7 +226,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       // roll back the mutations since this errored...
       // in real world we would retry
       let pushEnd = Date.now();
-      logger?.error(this.#core._loggerPrefix(), `/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Error: ${e}`)
+      console.error(this.#core._loggerPrefix(), `/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Error: ${e}`)
       this.#core.store.pendingMutations = this.#core.store.pendingMutations.filter(
         (m) => !notYetPushed.includes(m)
       );
