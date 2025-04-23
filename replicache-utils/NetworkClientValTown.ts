@@ -5,7 +5,9 @@ import {
   PushRequest,
 } from "./server-types.ts";
 import Ably from "https://esm.sh/ably";
-
+let pokeCount = 0;
+let pullCount = 0;
+let pushCount = 0;
 
 let ably: Ably.Realtime | null = null;
 export function getAbly() {
@@ -30,14 +32,14 @@ export const createValTownNetworkClient: NetworkClientFactory = ({
     const channel = ably.channels.get(spaceId);
   
     channel.subscribe("poke", (message) => {
-      console.log("network -- poke");
+      console.log("network -- poke", pokeCount++);
       onPoke(message.data);
     });
   }
 
   return {
     pull: async ({ spaceId, afterMutationId }) => {
-      console.log("network -- pull");
+      console.log("network -- pull", pullCount++);
       const pullStart = Date.now();
       const response = await fetch(
         `${baseURL}/pull/${spaceId}?afterMutationId=${afterMutationId}`
@@ -60,7 +62,7 @@ export const createValTownNetworkClient: NetworkClientFactory = ({
       return data;
     },
     push: async (args) => {
-      console.log("network -- push");
+      console.log("network -- push", pushCount++);
       const mutations = args.mutations;
       const pushRequest: PushRequest = {
         mutations: mutations.map((m) => ({
