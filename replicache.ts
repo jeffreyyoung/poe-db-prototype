@@ -67,7 +67,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
           }
           const endTime = Date.now();
           const duration = endTime - startTime;
-          logger?.info(`/TIME ${duration}ms - local mutation ${id} took ${duration}ms to run locally and then receive server result. Result had ${poke.patches.length} patches`);
+          logger?.info(this.#core._loggerPrefix(), `/TIME ${duration}ms - local mutation ${id} took ${duration}ms to run locally and then receive server result. Result had ${poke.patches.length} patches`);
         });
       },
       pullDelay: options.pullDelay ?? 100,
@@ -153,11 +153,11 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       afterMutationId: this.#core.latestMutationId,
     });
     let pullEnd = Date.now();
-    logger?.info(`/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches. Updated keys: ${result.patches.map(p => p.key).join(", ")}`)
+    logger?.info(this.#core._loggerPrefix(), `/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches. Updated keys: ${result.patches.map(p => p.key).join(", ")}`)
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter(m => m.status !== "waiting").map(m => m.mutation.id));
   } catch (e) {
     let pullEnd = Date.now();
-    logger?.error(`/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`)
+    logger?.error(this.#core._loggerPrefix(), `/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`)
   }
   }
 
@@ -212,13 +212,13 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       // now the pushed mutations are in push state
       notYetPushed.forEach((m) => (m.status = "pushed"));
       let pushEnd = Date.now();
-      logger?.info(`/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.map(m => m.mutation.id).join(", ")} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}`)
+      logger?.info(this.#core._loggerPrefix(), `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.map(m => m.mutation.id).join(", ")} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}`)
     } catch (e) {
       console.error("Error pushing mutations", e);
       // roll back the mutations since this errored...
       // in real world we would retry
       let pushEnd = Date.now();
-      logger?.error(`/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}. Error: ${e}`)
+      logger?.error(this.#core._loggerPrefix(), `/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}. Error: ${e}`)
       this.#core.store.pendingMutations = this.#core.store.pendingMutations.filter(
         (m) => !notYetPushed.includes(m)
       );
