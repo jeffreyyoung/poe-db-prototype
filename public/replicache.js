@@ -742,15 +742,23 @@ var Replicache = class {
         if (shouldPull) {
           this.#enqueuePull();
         }
+        const times = [];
         localMutationIds.forEach((id) => {
           const startTime = this.#_debugLocalMutationIdToStartTime.get(id);
           if (!startTime) {
             return;
           }
+          this.#_debugLocalMutationIdToStartTime.delete(id);
           const endTime = Date.now();
           const duration = endTime - startTime;
-          logger?.info(this.#core._loggerPrefix(), `mutation round trip time: ${duration}ms, (run local mutation, send to server, receive server response)`);
+          times.push(duration);
         });
+        const minTime = Math.min(...times);
+        const maxTime = Math.max(...times);
+        const avgTime = times.reduce((acc, t) => acc + t, 0) / times.length;
+        if (times.length > 0) {
+          logger?.info(this.#core._loggerPrefix(), `MUTATION ROUND TRIP TIME:minTime: ${minTime}, maxTime: ${maxTime}, avgTime: ${avgTime}, mutations count: ${times.length}`);
+        }
       },
       pullDelay: options.pullDelay ?? 100,
       pushDelay: options.pushDelay ?? 100

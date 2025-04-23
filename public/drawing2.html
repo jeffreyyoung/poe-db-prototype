@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Drawing App</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+        #canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: white;
+        }
+        .cursor {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+        }
+        .cursor::after {
+            content: attr(data-name);
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            font-size: 12px;
+            color: black;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <script type="module">
+        import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@9d559879b82b69749481192a0a50d66b3010bdae/replicache.js"
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+
+        // Set canvas size to match container
+        function resizeCanvas() {
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Initialize Replicache
+        const rep = new Replicache({
+            pushDelay: 100,
+            pullDelay: 100,
+            mutators: {
+                addPointToStroke: async (tx, { strokeID, point, color }) => {
+                    const stroke = (await tx.get(`strokes/${strokeID}`)) || { points: [], color };
+                    await tx.set(`strokes/${strokeID}`, { ...stroke, color, points: [...stroke.points, point] });
+                },
+                updateCursor: async (tx, { x, y, color, name, updatedAt }) => {
+                    await tx.set(`cursors/${tx.clientID}`, { x, y, clientID: tx.clientID, color, name, updatedAt });
+                },
+                deleteCursor: async (tx, { cursorKey }) => {
+                    await tx.del(cursorKey);
+                }
+            }
+        });
+
+        // Drawing state
+        let isDrawing = false;
+        let currentStrokeID = null;
+        const colors = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#FF00FF', '#00FFFF'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const name = `User-${Math.floor(Math.random() * 1000)}`;
+
+        // Drawing event handlers
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        function startDrawing(e) {
+            isDrawing = true;
+            currentStrokeID = Date.now().toString();
+            const point = getPointFromEvent(e);
+            rep.mutate.addPointToStroke({ strokeID: currentStrokeID, point, color });
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const point = getPointFromEvent(e);
+            rep.mutate.addPointToStroke({ strokeID: currentStrokeID, point, color });
+            rep.mutate.updateCursor({ x: point.x, y: point.y, color, name, updatedAt: Date.now() });
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+        }
+
+        function getPointFromEvent(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        // Subscribe to cursor changes
+        rep.subscribeToScanEntries("cursors/", (entries, changes) => {
+            for (const [key, value] of changes.added) {
+                addCursorToDom(key, value);
+            }
+            for (const [key, value] of changes.changed) {
+                updateCursorInDom(key, value);
+            }
+            for (const [key] of changes.removed) {
+                removeCursorFromDom(key);
+            }
+        });
+
+        // Subscribe to stroke changes
+        rep.subscribeToScanEntries("strokes/", (entries, changes) => {
+            for (const [key, value] of changes.added) {
+                drawStroke(value);
+            }
+            for (const [key, value] of changes.changed) {
+                redrawAllStrokes();
+            }
+        });
+
+        // DOM manipulation functions
+        function addCursorToDom(key, value) {
+            const cursor = document.createElement('div');
+            cursor.className = 'cursor';
+            cursor.id = `cursor-${key}`;
+            cursor.style.backgroundColor = value.color;
+            cursor.style.left = `${value.x}px`;
+            cursor.style.top = `${value.y}px`;
+            cursor.setAttribute('data-name', value.name);
+            container.appendChild(cursor);
+        }
+
+        function updateCursorInDom(key, value) {
+            const cursor = document.getElementById(`cursor-${key}`);
+            if (cursor) {
+                cursor.style.left = `${value.x}px`;
+                cursor.style.top = `${value.y}px`;
+            }
+        }
+
+        function removeCursorFromDom(key) {
+            const cursor = document.getElementById(`cursor-${key}`);
+            if (cursor) {
+                cursor.remove();
+            }
+        }
+
+        function drawStroke(stroke) {
+            ctx.beginPath();
+            ctx.strokeStyle = stroke.color;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            if (stroke.points.length > 0) {
+                ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+                for (let i = 1; i < stroke.points.length; i++) {
+                    ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+                }
+            }
+            ctx.stroke();
+        }
+
+        function redrawAllStrokes() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            rep.query(async (tx) => {
+                const entries = await tx.scan({ prefix: "strokes/" }).entries().toArray();
+                for (const [, value] of entries) {
+                    drawStroke(value);
+                }
+            });
+        }
+
+        // Clean up inactive cursors
+        async function removeInactiveCursors() {
+            const keysToDelete = await rep.query(async (tx) => {
+                const entries = await tx.scan({ prefix: "cursors/" }).entries().toArray();
+                return entries
+                    .filter(([, value]) => Date.now() - value.updatedAt > 5000)
+                    .map(([key]) => key);
+            });
+            for (const cursorKey of keysToDelete) {
+                await rep.mutate.deleteCursor({ cursorKey });
+            }
+        }
+
+        setInterval(removeInactiveCursors, 30000);
+    </script>
+</body>
+</html> 
