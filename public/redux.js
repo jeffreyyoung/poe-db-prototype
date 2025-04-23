@@ -27,7 +27,7 @@ function createStore(reducer) {
   return {
     getState: () => state,
     dispatch: (action) => {
-      state = reducer(state, action);
+      state = reducer(state ?? void 0, action);
       channel.publish("action", action);
       listeners.forEach((listener) => listener(state));
     },
