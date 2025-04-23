@@ -589,20 +589,20 @@ var ReplicacheCore = class {
     return funcStr;
   }
   _loggerPrefix() {
-    return `lastMutationId:${this.latestMutationId}, pendingMutations:${this.store.pendingMutations.length}`;
+    return `mutationId:${this.latestMutationId}`;
   }
   processPokeResult(pokeResult) {
     console.log("received a poke", pokeResult.mutationIds, pokeResult);
     const maxMutationId = Math.max(...pokeResult.mutationIds);
     const minMutationId = Math.min(...pokeResult.mutationIds);
     if (minMutationId !== this.latestMutationId + 1) {
-      logger?.warn(this._loggerPrefix(), `/poke - out of order poke... triggering pull - poke contained mutations${pokeResult.mutationIds.join(", ")} - Current client mutation id: ${this.latestMutationId} -- poke contained ${pokeResult.patches.length} patches`);
+      logger?.warn(this._loggerPrefix(), `/poke - out of order poke... triggering pull - poke contained ${pokeResult.mutationIds.length} mutations and ${pokeResult.patches.length} patches`);
       console.log(
         `pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${this.latestMutationId}`
       );
       return { shouldPull: true, localMutationIds: pokeResult.localMutationIds };
     }
-    logger?.info(this._loggerPrefix(), `/poke - in order poke... applying ${pokeResult.patches.length} patches - poke contained mutations${pokeResult.mutationIds.join(", ")} - Current client mutation id: ${this.latestMutationId}`);
+    logger?.info(this._loggerPrefix(), `/poke - in order poke... applying ${pokeResult.patches.length} patches - poke contained ${pokeResult.mutationIds.length} mutations and ${pokeResult.patches.length} patches`);
     this.removeCompletedLocalMutations(pokeResult.localMutationIds);
     const changedKeys = this.#applyPatches(pokeResult.patches);
     this.latestMutationId = maxMutationId;
@@ -748,7 +748,7 @@ var Replicache = class {
           }
           const endTime = Date.now();
           const duration = endTime - startTime;
-          logger?.info(this.#core._loggerPrefix(), `/TIME ${duration}ms - local mutation ${id} took ${duration}ms to run locally and then receive server result. Result had ${poke.patches.length} patches`);
+          logger?.info(this.#core._loggerPrefix(), `mutation round trip time: ${duration}ms`);
         });
       },
       pullDelay: options.pullDelay ?? 100,
