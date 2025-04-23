@@ -74,6 +74,7 @@ export const createValTownNetworkClient: NetworkClientFactory = ({
       const pushEnd = Date.now();
       const timeInMs = pushEnd - pushStart;
       if (!response.ok) {
+        console.error("Failed to push to", spaceId, pushRequest, response.statusText)
         throw new Error(`Failed to push to ${spaceId}: ${response.statusText}`);
       }
       const data = await response.json();

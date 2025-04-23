@@ -59,8 +59,8 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
           this.#enqueuePull();
         }
       },
-      pullDelay: options.pullDelay ?? 20,
-      pushDelay: options.pushDelay ?? 20,
+      pullDelay: options.pullDelay ?? 100,
+      pushDelay: options.pushDelay ?? 100,
     });
     if (typeof window !== "undefined") {
       this.#addToWindow();
