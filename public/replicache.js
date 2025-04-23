@@ -394,6 +394,15 @@ function debugLogger() {
   let logContent = null;
   let isExpanded = false;
   let autoScroll = true;
+  const loadJsonFormatter = () => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/json-formatter-js@2.3.4/dist/json-formatter.umd.min.js";
+    script.async = true;
+    document.head.appendChild(script);
+    return new Promise((resolve) => {
+      script.onload = resolve;
+    });
+  };
   function createLogPanel() {
     if (logPanel) return;
     logPanel = document.createElement("div");
@@ -460,9 +469,47 @@ function debugLogger() {
       logPanel.style.height = "30px";
     });
   }
-  function log(message) {
+  function getTypeColor(type) {
+    switch (type) {
+      case "info":
+        return "#4CAF50";
+      case "warn":
+        return "#FFC107";
+      case "error":
+        return "#F44336";
+      case "debug":
+        return "#2196F3";
+      default:
+        return "#fff";
+    }
+  }
+  function formatArgs(args) {
+    const container = document.createElement("div");
+    container.style.marginTop = "4px";
+    args.forEach((arg) => {
+      const argContainer = document.createElement("div");
+      argContainer.style.marginLeft = "8px";
+      if (typeof arg === "object" && arg !== null) {
+        const formatter = new JSONFormatter(arg, 1, {
+          hoverPreviewEnabled: true,
+          hoverPreviewArrayCount: 100,
+          hoverPreviewFieldCount: 5,
+          theme: "dark",
+          animateOpen: true,
+          animateClose: true
+        });
+        argContainer.appendChild(formatter.render());
+      } else {
+        argContainer.textContent = String(arg);
+      }
+      container.appendChild(argContainer);
+    });
+    return container;
+  }
+  async function log(type, message, ...args) {
     if (!logPanel) {
       createLogPanel();
+      await loadJsonFormatter();
     }
     const timestamp = (/* @__PURE__ */ new Date()).toLocaleTimeString();
     const logEntry = document.createElement("div");
@@ -471,14 +518,32 @@ function debugLogger() {
             padding: 2px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         `;
-    logEntry.innerHTML = `<span style="color: #888">[${timestamp}]</span> ${message}`;
+    const typeSpan = document.createElement("span");
+    typeSpan.textContent = `[${type.toUpperCase()}]`;
+    typeSpan.style.color = getTypeColor(type);
+    typeSpan.style.marginRight = "4px";
+    const timeSpan = document.createElement("span");
+    timeSpan.textContent = `[${timestamp}]`;
+    timeSpan.style.color = "#888";
+    timeSpan.style.marginRight = "4px";
+    const messageSpan = document.createElement("span");
+    messageSpan.textContent = message;
+    logEntry.appendChild(typeSpan);
+    logEntry.appendChild(timeSpan);
+    logEntry.appendChild(messageSpan);
+    if (args.length > 0) {
+      logEntry.appendChild(formatArgs(args));
+    }
     logContent.appendChild(logEntry);
     if (autoScroll) {
       logContent.scrollTop = logContent.scrollHeight;
     }
   }
   return {
-    log
+    info: (message, ...args) => log("info", message, ...args),
+    warn: (message, ...args) => log("warn", message, ...args),
+    error: (message, ...args) => log("error", message, ...args),
+    debug: (message, ...args) => log("debug", message, ...args)
   };
 }
 var logger = debugLogger();
@@ -514,13 +579,13 @@ var ReplicacheCore = class {
     const maxMutationId = Math.max(...pokeResult.mutationIds);
     const minMutationId = Math.min(...pokeResult.mutationIds);
     if (minMutationId !== this.latestMutationId + 1) {
-      logger?.log(`/poke - out of order poke... triggering pull - poke contained mutations${pokeResult.mutationIds.join(", ")} - Current client mutation id: ${this.latestMutationId} -- poke contained ${pokeResult.patches.length} patches`);
+      logger?.warn(`/poke - out of order poke... triggering pull - poke contained mutations${pokeResult.mutationIds.join(", ")} - Current client mutation id: ${this.latestMutationId} -- poke contained ${pokeResult.patches.length} patches`);
       console.log(
         `pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${this.latestMutationId}`
       );
       return { shouldPull: true };
     }
-    logger?.log(`/poke - in order poke... applying ${pokeResult.patches.length} patches - poke contained mutations${pokeResult.mutationIds.join(", ")} - Current client mutation id: ${this.latestMutationId}`);
+    logger?.info(`/poke - in order poke... applying ${pokeResult.patches.length} patches - poke contained mutations${pokeResult.mutationIds.join(", ")} - Current client mutation id: ${this.latestMutationId}`);
     console.log(`applying ${pokeResult.patches.length} patches`);
     this.removeCompletedLocalMutations(pokeResult.localMutationIds);
     const changedKeys = this.#applyPatches(pokeResult.patches);

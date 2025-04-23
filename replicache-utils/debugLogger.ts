@@ -1,5 +1,14 @@
 /// <reference lib="dom" />
 
+type LogType = 'info' | 'warn' | 'error' | 'debug';
+
+interface LogEntry {
+    type: LogType;
+    message: string;
+    args?: any[];
+    timestamp: string;
+}
+
 function debugLogger() {
     if (typeof window === "undefined") {
         return;
@@ -9,6 +18,17 @@ function debugLogger() {
     let logContent: HTMLElement | null = null;
     let isExpanded = false;
     let autoScroll = true;
+
+    // Load JSON formatter from CDN
+    const loadJsonFormatter = () => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/json-formatter-js@2.3.4/dist/json-formatter.umd.min.js';
+        script.async = true;
+        document.head.appendChild(script);
+        return new Promise((resolve) => {
+            script.onload = resolve;
+        });
+    };
 
     function createLogPanel() {
         if (logPanel) return;
@@ -89,9 +109,49 @@ function debugLogger() {
         });
     }
 
-    function log(message: string) {
+    function getTypeColor(type: LogType): string {
+        switch (type) {
+            case 'info': return '#4CAF50';
+            case 'warn': return '#FFC107';
+            case 'error': return '#F44336';
+            case 'debug': return '#2196F3';
+            default: return '#fff';
+        }
+    }
+
+    function formatArgs(args: any[]): HTMLElement {
+        const container = document.createElement('div');
+        container.style.marginTop = '4px';
+        
+        args.forEach(arg => {
+            const argContainer = document.createElement('div');
+            argContainer.style.marginLeft = '8px';
+            
+            if (typeof arg === 'object' && arg !== null) {
+                // @ts-ignore - json-formatter-js will be loaded from CDN
+                const formatter = new JSONFormatter(arg, 1, {
+                    hoverPreviewEnabled: true,
+                    hoverPreviewArrayCount: 100,
+                    hoverPreviewFieldCount: 5,
+                    theme: 'dark',
+                    animateOpen: true,
+                    animateClose: true
+                });
+                argContainer.appendChild(formatter.render());
+            } else {
+                argContainer.textContent = String(arg);
+            }
+            
+            container.appendChild(argContainer);
+        });
+        
+        return container;
+    }
+
+    async function log(type: LogType, message: string, ...args: any[]) {
         if (!logPanel) {
             createLogPanel();
+            await loadJsonFormatter();
         }
 
         const timestamp = new Date().toLocaleTimeString();
@@ -101,7 +161,27 @@ function debugLogger() {
             padding: 2px 0;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         `;
-        logEntry.innerHTML = `<span style="color: #888">[${timestamp}]</span> ${message}`;
+
+        const typeSpan = document.createElement('span');
+        typeSpan.textContent = `[${type.toUpperCase()}]`;
+        typeSpan.style.color = getTypeColor(type);
+        typeSpan.style.marginRight = '4px';
+
+        const timeSpan = document.createElement('span');
+        timeSpan.textContent = `[${timestamp}]`;
+        timeSpan.style.color = '#888';
+        timeSpan.style.marginRight = '4px';
+
+        const messageSpan = document.createElement('span');
+        messageSpan.textContent = message;
+
+        logEntry.appendChild(typeSpan);
+        logEntry.appendChild(timeSpan);
+        logEntry.appendChild(messageSpan);
+
+        if (args.length > 0) {
+            logEntry.appendChild(formatArgs(args));
+        }
         
         logContent!.appendChild(logEntry);
 
@@ -111,7 +191,10 @@ function debugLogger() {
     }
 
     return {
-        log,
+        info: (message: string, ...args: any[]) => log('info', message, ...args),
+        warn: (message: string, ...args: any[]) => log('warn', message, ...args),
+        error: (message: string, ...args: any[]) => log('error', message, ...args),
+        debug: (message: string, ...args: any[]) => log('debug', message, ...args),
     };
 }
 
