@@ -862,7 +862,7 @@ var Replicache = class {
       });
       notYetPushed.forEach((m) => m.status = "pushed");
       let pushEnd = Date.now();
-      logger?.info(`/push - success (${pushEnd - pushStart}ms) - Pushed ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map((m) => m.kvUpdates.keys()).flat().join(", ")}`);
+      logger?.info(`/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.map((m) => m.mutation.id).join(", ")} mutations. Updated keys: ${notYetPushed.map((m) => m.kvUpdates.keys()).flat().join(", ")}`);
     } catch (e) {
       console.error("Error pushing mutations", e);
       let pushEnd = Date.now();

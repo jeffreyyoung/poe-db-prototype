@@ -212,7 +212,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       // now the pushed mutations are in push state
       notYetPushed.forEach((m) => (m.status = "pushed"));
       let pushEnd = Date.now();
-      logger?.info(`/push - success (${pushEnd - pushStart}ms) - Pushed ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}`)
+      logger?.info(`/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.map(m => m.mutation.id).join(", ")} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}`)
     } catch (e) {
       console.error("Error pushing mutations", e);
       // roll back the mutations since this errored...

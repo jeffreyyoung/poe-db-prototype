@@ -436,6 +436,7 @@
     "https://esm.sh/ably": "https://esm.sh/ably@2.7.0"
   },
   "remote": {
+    "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@2d4f50ccf9af40b05ddad4f76a444935213859a2/replicache.js": "345654d33fe01ef14e8653ff57e9f2e0152a062ab8f3cb31578f248e789f405f",
     "https://cdn.jsdelivr.net/npm/lib0@0.2.78/array/+esm": "84985b6a47977b2dbbdab8e0720a4eaf590184bb625c3dee93c51035628ce287",
     "https://cdn.jsdelivr.net/npm/lib0@0.2.78/binary/+esm": "ab15ea640a4681f2c46897edcfbd3618da96e794fd8428122f6f50d677da31af",
     "https://cdn.jsdelivr.net/npm/lib0@0.2.78/buffer/+esm": "3aa06498ab266ca8170f1403d970d00579f35bbff7496893c1078c62b795d049",
