@@ -80,6 +80,16 @@ function debugLogger() {
             e.stopPropagation();
             isPinned = !isPinned;
             pinButton.style.color = isPinned ? '#4CAF50' : '#fff';
+            
+            if (isPinned) {
+                isExpanded = true;
+                logPanel!.style.width = '400px';
+                logPanel!.style.height = '75vh';
+            } else {
+                isExpanded = false;
+                logPanel!.style.width = '200px';
+                logPanel!.style.height = '30px';
+            }
         };
         header.appendChild(pinButton);
 
@@ -98,9 +108,11 @@ function debugLogger() {
 
         // Add hover handlers
         logPanel.addEventListener('mouseenter', () => {
-            isExpanded = true;
-            logPanel!.style.width = '400px';
-            logPanel!.style.height = '75vh';
+            if (!isPinned) {
+                isExpanded = true;
+                logPanel!.style.width = '400px';
+                logPanel!.style.height = '75vh';
+            }
         });
 
         logPanel.addEventListener('mouseleave', () => {
