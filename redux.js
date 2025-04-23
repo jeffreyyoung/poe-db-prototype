@@ -1,7 +1,21 @@
 // redux.ts
 import Ably from "https://esm.sh/ably";
+
+// replicache-utils/hash.ts
+function simpleHash(str) {
+  let hash = 0;
+  if (str.length === 0) return hash;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+// redux.ts
 function createStore(reducer) {
-  const hash = reducer.toString();
+  const hash = simpleHash(reducer.toString());
   const ably = new Ably.Realtime("frBw7w.OhTF1A:ZQNStvW9BVmKiVwQ3ZqOtTN8T5-QaIlmkQ5a675c2iM");
   const channel = ably.channels.get(hash);
   let state;

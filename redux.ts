@@ -1,10 +1,11 @@
 import Ably from "https://esm.sh/ably";
+import { simpleHash } from "./replicache-utils/hash.ts";
 type Reducer<T> = (state: T, action: any) => T;
 type Listener<T> = (state: T) => void;
 
 
 export function createStore<T>(reducer: Reducer<T>) {
-    const hash = reducer.toString();
+    const hash = simpleHash(reducer.toString());
     const ably = new Ably.Realtime("frBw7w.OhTF1A:ZQNStvW9BVmKiVwQ3ZqOtTN8T5-QaIlmkQ5a675c2iM");
     const channel = ably.channels.get(hash);
     let state: T;
