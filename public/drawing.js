@@ -27,6 +27,8 @@ const canvas = document.getElementById('drawingCanvas')
 const ctx = canvas.getContext('2d')
 const colorPicker = document.getElementById('colorPicker')
 const clearButton = document.getElementById('clearCanvas')
+const closeButton = document.getElementById('closePanel')
+const drawingContainer = document.querySelector('.drawing-container')
 
 let isDrawing = false
 let currentStrokeID = null
@@ -109,6 +111,11 @@ canvas.addEventListener('mouseleave', () => {
 clearButton.addEventListener('click', () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     rep.mutate.clearCanvas()
+})
+
+// Handle close button
+closeButton.addEventListener('click', () => {
+    drawingContainer.classList.add('hidden')
 })
 
 // Subscribe to strokes

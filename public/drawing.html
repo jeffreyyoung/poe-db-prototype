@@ -10,6 +10,8 @@
             margin: 0;
             padding: 20px;
             background: #f5f5f5;
+            min-height: 100vh;
+            padding-bottom: 100px;
         }
         .drawing-container {
             max-width: 800px;
@@ -18,6 +20,7 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             padding: 20px;
+            position: relative;
         }
         .controls {
             display: flex;
@@ -59,10 +62,29 @@
             pointer-events: none;
             transform: translate(-50%, -50%);
         }
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 5px;
+            line-height: 1;
+        }
+        .close-btn:hover {
+            color: #333;
+        }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="drawing-container">
+        <button class="close-btn" id="closePanel">×</button>
         <h1>Collaborative Drawing App</h1>
         <div class="controls">
             <input type="color" id="colorPicker" class="color-picker" value="#000000">

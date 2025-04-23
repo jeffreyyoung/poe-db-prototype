@@ -865,7 +865,7 @@ var Replicache = class {
       });
       notYetPushed.forEach((m) => m.status = "pushed");
       let pushEnd = Date.now();
-      logger?.info(this.#core._loggerPrefix(), `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.map((m) => m.mutation.id).join(", ")} mutations. Updated keys: ${notYetPushed.map((m) => m.kvUpdates.keys()).flat().join(", ")}`);
+      logger?.info(this.#core._loggerPrefix(), `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.map((m) => m.mutation.id).join(", ")} mutations. Updated keys: ${notYetPushed.map((m) => Array.from(m.kvUpdates.keys())).flat().join(", ")}`);
     } catch (e) {
       console.error("Error pushing mutations", e);
       let pushEnd = Date.now();
