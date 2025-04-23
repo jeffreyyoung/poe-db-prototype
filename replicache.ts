@@ -11,6 +11,7 @@ import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
 import { ChangeSummary } from "./replicache-utils/replicache-types.ts";
 import type { ReadTransaction, Replicache as ReplicacheType } from "./replicache-utils/replicache-types.ts";
 import { hashMutators, simpleHash } from "./replicache-utils/hash.ts";
+import { logger } from "./replicache-utils/debugLogger.ts";
 
 export class Replicache implements ReplicacheType<Record<string, any>> {
   #core: ReplicacheCore;
@@ -135,11 +136,19 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
 
 
   async #doPull() {
+    let pullStart = Date.now();
+    try {
     const result = await this.#networkClient.pull({
       spaceId: this.#spaceId,
       afterMutationId: this.#core.latestMutationId,
     });
+    let pullEnd = Date.now();
+    logger?.log(`/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches. Updated keys: ${result.patches.map(p => p.kvUpdates.keys()).flat().join(", ")}`)
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter(m => m.status !== "waiting").map(m => m.mutation.id));
+  } catch (e) {
+    let pullEnd = Date.now();
+    logger?.log(`/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`)
+  }
   }
 
   subscribeToScanEntries(scanArg: ScanArg, onChange: ObservePrefixOnChange) {
@@ -175,6 +184,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
 
   async #doPush() {
     console.log("starting push", this.#core.store.pendingMutations.length);
+    
     const notYetPushed = this.#core.store.pendingMutations.filter(
       (m) => m.status === "waiting"
     );
@@ -182,17 +192,22 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       return;
     }
     notYetPushed.forEach((m) => (m.status = "pending"));
+    let pushStart = Date.now();
     try {
+      
       await this.#networkClient.push({
         mutations: notYetPushed.map((m) => m.mutation)
       });
       // now the pushed mutations are in push state
       notYetPushed.forEach((m) => (m.status = "pushed"));
-      
+      let pushEnd = Date.now();
+      logger?.log(`/push - success (${pushEnd - pushStart}ms) - Pushed ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}`)
     } catch (e) {
       console.error("Error pushing mutations", e);
       // roll back the mutations since this errored...
       // in real world we would retry
+      let pushEnd = Date.now();
+      logger?.log(`/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map(m => m.kvUpdates.keys()).flat().join(", ")}. Error: ${e}`)
       this.#core.store.pendingMutations = this.#core.store.pendingMutations.filter(
         (m) => !notYetPushed.includes(m)
       );

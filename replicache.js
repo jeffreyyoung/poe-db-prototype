@@ -385,6 +385,104 @@ function areSetsEqual(setA, setB) {
   return true;
 }
 
+// replicache-utils/debugLogger.ts
+function debugLogger() {
+  if (typeof window === "undefined") {
+    return;
+  }
+  let logPanel = null;
+  let logContent = null;
+  let isExpanded = false;
+  let autoScroll = true;
+  function createLogPanel() {
+    if (logPanel) return;
+    logPanel = document.createElement("div");
+    logPanel.style.cssText = `
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 200px;
+            height: 30px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border-radius: 4px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            z-index: 9999;
+            font-family: monospace;
+            font-size: 12px;
+        `;
+    const header = document.createElement("div");
+    header.style.cssText = `
+            padding: 5px;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        `;
+    const title = document.createElement("span");
+    title.textContent = "Debug Logs";
+    header.appendChild(title);
+    const pinButton = document.createElement("button");
+    pinButton.textContent = "\u{1F4CC}";
+    pinButton.style.cssText = `
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            padding: 2px 5px;
+        `;
+    pinButton.onclick = (e) => {
+      e.stopPropagation();
+      autoScroll = !autoScroll;
+      pinButton.style.color = autoScroll ? "#fff" : "#888";
+    };
+    header.appendChild(pinButton);
+    logContent = document.createElement("div");
+    logContent.style.cssText = `
+            padding: 5px;
+            height: calc(75vh - 30px);
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        `;
+    logPanel.appendChild(header);
+    logPanel.appendChild(logContent);
+    document.body.appendChild(logPanel);
+    logPanel.addEventListener("mouseenter", () => {
+      isExpanded = true;
+      logPanel.style.width = "400px";
+      logPanel.style.height = "75vh";
+    });
+    logPanel.addEventListener("mouseleave", () => {
+      isExpanded = false;
+      logPanel.style.width = "200px";
+      logPanel.style.height = "30px";
+    });
+  }
+  function log(message) {
+    if (!logPanel) {
+      createLogPanel();
+    }
+    const timestamp = (/* @__PURE__ */ new Date()).toLocaleTimeString();
+    const logEntry = document.createElement("div");
+    logEntry.style.cssText = `
+            margin-bottom: 4px;
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        `;
+    logEntry.innerHTML = `<span style="color: #888">[${timestamp}]</span> ${message}`;
+    logContent.appendChild(logEntry);
+    if (autoScroll) {
+      logContent.scrollTop = logContent.scrollHeight;
+    }
+  }
+  return {
+    log
+  };
+}
+var logger = debugLogger();
+
 // replicache-utils/createReplicacheCore.ts
 var ReplicacheCore = class {
   store = {
@@ -416,11 +514,13 @@ var ReplicacheCore = class {
     const maxMutationId = Math.max(...pokeResult.mutationIds);
     const minMutationId = Math.min(...pokeResult.mutationIds);
     if (minMutationId !== this.latestMutationId + 1) {
+      logger?.log(`/poke - out of order poke... triggering pull - poke contained mutations${pokeResult.mutationIds.join(", ")} - Current client mutation id: ${this.latestMutationId} -- poke contained ${pokeResult.patches.length} patches`);
       console.log(
         `pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${this.latestMutationId}`
       );
       return { shouldPull: true };
     }
+    logger?.log(`/poke - in order poke... applying ${pokeResult.patches.length} patches - poke contained mutations${pokeResult.mutationIds.join(", ")} - Current client mutation id: ${this.latestMutationId}`);
     console.log(`applying ${pokeResult.patches.length} patches`);
     this.removeCompletedLocalMutations(pokeResult.localMutationIds);
     const changedKeys = this.#applyPatches(pokeResult.patches);
@@ -616,11 +716,19 @@ var Replicache = class {
     return this.#core.subscribe(queryCb, onQueryCbChanged);
   }
   async #doPull() {
-    const result = await this.#networkClient.pull({
-      spaceId: this.#spaceId,
-      afterMutationId: this.#core.latestMutationId
-    });
-    this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id));
+    let pullStart = Date.now();
+    try {
+      const result = await this.#networkClient.pull({
+        spaceId: this.#spaceId,
+        afterMutationId: this.#core.latestMutationId
+      });
+      let pullEnd = Date.now();
+      logger?.log(`/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches. Updated keys: ${result.patches.map((p) => p.kvUpdates.keys()).flat().join(", ")}`);
+      this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id));
+    } catch (e) {
+      let pullEnd = Date.now();
+      logger?.log(`/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`);
+    }
   }
   subscribeToScanEntries(scanArg, onChange) {
     return this.#core.observeEntries(scanArg, onChange);
@@ -657,13 +765,18 @@ var Replicache = class {
       return;
     }
     notYetPushed.forEach((m) => m.status = "pending");
+    let pushStart = Date.now();
     try {
       await this.#networkClient.push({
         mutations: notYetPushed.map((m) => m.mutation)
       });
       notYetPushed.forEach((m) => m.status = "pushed");
+      let pushEnd = Date.now();
+      logger?.log(`/push - success (${pushEnd - pushStart}ms) - Pushed ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map((m) => m.kvUpdates.keys()).flat().join(", ")}`);
     } catch (e) {
       console.error("Error pushing mutations", e);
+      let pushEnd = Date.now();
+      logger?.log(`/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Updated keys: ${notYetPushed.map((m) => m.kvUpdates.keys()).flat().join(", ")}. Error: ${e}`);
       this.#core.store.pendingMutations = this.#core.store.pendingMutations.filter(
         (m) => !notYetPushed.includes(m)
       );

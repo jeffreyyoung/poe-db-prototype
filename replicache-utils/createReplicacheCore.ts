@@ -8,6 +8,7 @@ import type { PullResponse, PokeResult, Patch } from "./server-types.ts";
 import { createStoreSnapshot, Store } from "./Store.ts";
 import { createSubscriptionManager } from "./SubscriptionManager.ts";
 import { ReadTransactionWithKeys as ReadTransaction } from "./replicache-internal-types.ts";
+import { logger } from "./debugLogger.ts";
 /**
  * This class has no network related code.  It handles all core logic.  Anything that directly interacts with the store
  * should be defined here.
@@ -70,11 +71,13 @@ export class ReplicacheCore {
     const minMutationId = Math.min(...pokeResult.mutationIds);
 
     if (minMutationId !== this.latestMutationId + 1) {
+      logger?.log(`/poke - out of order poke... triggering pull - poke contained mutations${pokeResult.mutationIds.join(', ')} - Current client mutation id: ${this.latestMutationId} -- poke contained ${pokeResult.patches.length} patches`)
       console.log(
         `pulling from server because the mutation id of the poke: ${minMutationId} is to far beyond the latest client mutation id: ${this.latestMutationId}`
-      );
+      )
       return { shouldPull: true };
     }
+    logger?.log(`/poke - in order poke... applying ${pokeResult.patches.length} patches - poke contained mutations${pokeResult.mutationIds.join(', ')} - Current client mutation id: ${this.latestMutationId}`)
     console.log(`applying ${pokeResult.patches.length} patches`);
     // we can just apply the mutations and skip pulling
     this.removeCompletedLocalMutations(pokeResult.localMutationIds);
