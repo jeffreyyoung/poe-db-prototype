@@ -394,6 +394,7 @@ function debugLogger() {
   let logContent = null;
   let isExpanded = false;
   let autoScroll = true;
+  let isPinned = false;
   const loadJsonFormatter = () => {
     const script = document.createElement("script");
     script.src = "https://cdn.jsdelivr.net/npm/json-formatter-js@2.3.4/dist/json-formatter.umd.min.js";
@@ -444,8 +445,8 @@ function debugLogger() {
         `;
     pinButton.onclick = (e) => {
       e.stopPropagation();
-      autoScroll = !autoScroll;
-      pinButton.style.color = autoScroll ? "#fff" : "#888";
+      isPinned = !isPinned;
+      pinButton.style.color = isPinned ? "#4CAF50" : "#fff";
     };
     header.appendChild(pinButton);
     logContent = document.createElement("div");
@@ -464,9 +465,11 @@ function debugLogger() {
       logPanel.style.height = "75vh";
     });
     logPanel.addEventListener("mouseleave", () => {
-      isExpanded = false;
-      logPanel.style.width = "200px";
-      logPanel.style.height = "30px";
+      if (!isPinned) {
+        isExpanded = false;
+        logPanel.style.width = "200px";
+        logPanel.style.height = "30px";
+      }
     });
   }
   function getTypeColor(type) {

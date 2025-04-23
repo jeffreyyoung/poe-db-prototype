@@ -18,6 +18,7 @@ function debugLogger() {
     let logContent: HTMLElement | null = null;
     let isExpanded = false;
     let autoScroll = true;
+    let isPinned = false;
 
     // Load JSON formatter from CDN
     const loadJsonFormatter = () => {
@@ -77,8 +78,8 @@ function debugLogger() {
         `;
         pinButton.onclick = (e: MouseEvent) => {
             e.stopPropagation();
-            autoScroll = !autoScroll;
-            pinButton.style.color = autoScroll ? '#fff' : '#888';
+            isPinned = !isPinned;
+            pinButton.style.color = isPinned ? '#4CAF50' : '#fff';
         };
         header.appendChild(pinButton);
 
@@ -103,9 +104,11 @@ function debugLogger() {
         });
 
         logPanel.addEventListener('mouseleave', () => {
-            isExpanded = false;
-            logPanel!.style.width = '200px';
-            logPanel!.style.height = '30px';
+            if (!isPinned) {
+                isExpanded = false;
+                logPanel!.style.width = '200px';
+                logPanel!.style.height = '30px';
+            }
         });
     }
 
