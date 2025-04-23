@@ -6,7 +6,6 @@ const rep = new Replicache({
     pullDelay: 100,
     mutators: {
         createTodo: async (tx, {id, text}) => {
-            Logger.info('Creating todo:', { id, text });
             await tx.set(`todos/${id}`, {
                 id,
                 text,
@@ -15,7 +14,6 @@ const rep = new Replicache({
             });
         },
         toggleTodo: async (tx, {id}) => {
-            Logger.info('Toggling todo:', { id });
             const todo = await tx.get(`todos/${id}`);
             if (todo) {
                 await tx.set(`todos/${id}`, {
@@ -23,11 +21,9 @@ const rep = new Replicache({
                     completed: !todo.completed
                 });
             } else {
-                Logger.warning('Todo not found:', { id });
             }
         },
         deleteTodo: async (tx, {id}) => {
-            Logger.info('Deleting todo:', { id });
             await tx.del(`todos/${id}`);
         }
     }
