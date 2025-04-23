@@ -11,7 +11,6 @@ import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
 import { ChangeSummary } from "./replicache-utils/replicache-types.ts";
 import type { ReadTransaction, Replicache as ReplicacheType } from "./replicache-utils/replicache-types.ts";
 import { hashMutators } from "./replicache-utils/hash.ts";
-import { logger } from "./replicache-utils/debugLogger.ts";
 
 export class Replicache implements ReplicacheType<Record<string, any>> {
   #core: ReplicacheCore;
@@ -76,7 +75,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
         const maxTime = Math.max(...times);
         const avgTime = times.reduce((acc, t) => acc + t, 0) / times.length;
         if (times.length > 0) {
-          logger?.info(this.#core._loggerPrefix(), `MUTATION ROUND TRIP TIME:minTime: ${minTime}, maxTime: ${maxTime}, avgTime: ${avgTime}, mutations count: ${times.length}`);
+          console.log(this.#core._loggerPrefix(), `MUTATION ROUND TRIP TIME:minTime: ${minTime}, maxTime: ${maxTime}, avgTime: ${avgTime}, mutations count: ${times.length}`);
         }
       },
       pullDelay: options.pullDelay ?? 100,
@@ -162,11 +161,11 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       afterMutationId: this.#core.latestMutationId,
     });
     let pullEnd = Date.now();
-    logger?.info(this.#core._loggerPrefix(), `/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches.`)
+    console.log(this.#core._loggerPrefix(), `/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches.`)
     this.#core.processPullResult(result, this.#core.store.pendingMutations.filter(m => m.status !== "waiting").map(m => m.mutation.id));
   } catch (e) {
     let pullEnd = Date.now();
-    logger?.error(this.#core._loggerPrefix(), `/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`)
+    console?.error(this.#core._loggerPrefix(), `/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`)
   }
   }
 
@@ -221,7 +220,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       // now the pushed mutations are in push state
       notYetPushed.forEach((m) => (m.status = "pushed"));
       let pushEnd = Date.now();
-      logger?.info(this.#core._loggerPrefix(), `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.length} mutations.`);
+      console.log(this.#core._loggerPrefix(), `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.length} mutations.`);
     } catch (e) {
       console.error("Error pushing mutations", e);
       // roll back the mutations since this errored...

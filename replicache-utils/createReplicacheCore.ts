@@ -8,7 +8,6 @@ import type { PullResponse, PokeResult, Patch } from "./server-types.ts";
 import { createStoreSnapshot, Store } from "./Store.ts";
 import { createSubscriptionManager } from "./SubscriptionManager.ts";
 import { ReadTransactionWithKeys as ReadTransaction } from "./replicache-internal-types.ts";
-import { logger } from "./debugLogger.ts";
 /**
  * This class has no network related code.  It handles all core logic.  Anything that directly interacts with the store
  * should be defined here.

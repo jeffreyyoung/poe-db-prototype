@@ -391,183 +391,6 @@ function areSetsEqual(setA, setB) {
   return true;
 }
 
-// replicache-utils/debugLogger.ts
-function debugLogger() {
-  if (typeof window === "undefined") {
-    return;
-  }
-  let logPanel = null;
-  let logContent = null;
-  let isExpanded = false;
-  let autoScroll = true;
-  let isPinned = false;
-  const loadJsonFormatter = () => {
-    const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/npm/json-formatter-js@2.3.4/dist/json-formatter.umd.min.js";
-    script.async = true;
-    document.head.appendChild(script);
-    return new Promise((resolve) => {
-      script.onload = resolve;
-    });
-  };
-  function createLogPanel() {
-    if (logPanel) return;
-    logPanel = document.createElement("div");
-    logPanel.style.cssText = `
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            width: 200px;
-            height: 30px;
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            border-radius: 4px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            z-index: 9999;
-            font-family: monospace;
-            font-size: 12px;
-        `;
-    const header = document.createElement("div");
-    header.style.cssText = `
-            padding: 5px;
-            background: rgba(0, 0, 0, 0.9);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-        `;
-    const title = document.createElement("span");
-    title.textContent = "Debug Logs";
-    header.appendChild(title);
-    const pinButton = document.createElement("button");
-    pinButton.textContent = "\u{1F4CC}";
-    pinButton.style.cssText = `
-            background: none;
-            border: none;
-            color: #fff;
-            cursor: pointer;
-            padding: 2px 5px;
-        `;
-    header.appendChild(pinButton);
-    logContent = document.createElement("div");
-    logContent.style.cssText = `
-            padding: 5px;
-            height: calc(75vh - 30px);
-            overflow-y: auto;
-            scroll-behavior: smooth;
-        `;
-    logPanel.appendChild(header);
-    logPanel.appendChild(logContent);
-    document.body.appendChild(logPanel);
-    logPanel.addEventListener("mouseenter", () => {
-      if (!isPinned) {
-        isExpanded = true;
-        logPanel.style.width = "400px";
-        logPanel.style.height = "75vh";
-      }
-    });
-    logPanel.addEventListener("mouseleave", () => {
-      if (!isPinned) {
-        isExpanded = false;
-        logPanel.style.width = "200px";
-        logPanel.style.height = "30px";
-      }
-    });
-    header.onclick = () => {
-      isPinned = !isPinned;
-      pinButton.style.color = isPinned ? "#4CAF50" : "#fff";
-      if (isPinned) {
-        isExpanded = true;
-        logPanel.style.width = "400px";
-        logPanel.style.height = "75vh";
-      } else {
-        isExpanded = false;
-        logPanel.style.width = "200px";
-        logPanel.style.height = "30px";
-      }
-    };
-  }
-  function getTypeColor(type) {
-    switch (type) {
-      case "info":
-        return "#4CAF50";
-      case "warn":
-        return "#FFC107";
-      case "error":
-        return "#F44336";
-      case "debug":
-        return "#2196F3";
-      default:
-        return "#fff";
-    }
-  }
-  function formatArgs(args) {
-    const container = document.createElement("div");
-    container.style.marginTop = "4px";
-    args.forEach((arg) => {
-      const argContainer = document.createElement("div");
-      argContainer.style.marginLeft = "8px";
-      if (typeof arg === "object" && arg !== null) {
-        const formatter = new JSONFormatter(arg, 1, {
-          hoverPreviewEnabled: true,
-          hoverPreviewArrayCount: 100,
-          hoverPreviewFieldCount: 5,
-          theme: "dark",
-          animateOpen: true,
-          animateClose: true
-        });
-        argContainer.appendChild(formatter.render());
-      } else {
-        argContainer.textContent = String(arg);
-      }
-      container.appendChild(argContainer);
-    });
-    return container;
-  }
-  async function log(type, message, ...args) {
-    console.log(type, message, ...args);
-    if (!logPanel) {
-      createLogPanel();
-      await loadJsonFormatter();
-    }
-    const timestamp = (/* @__PURE__ */ new Date()).toLocaleTimeString();
-    const logEntry = document.createElement("div");
-    logEntry.style.cssText = `
-            margin-bottom: 4px;
-            padding: 2px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        `;
-    const typeSpan = document.createElement("span");
-    typeSpan.textContent = `[${type.toUpperCase()}]`;
-    typeSpan.style.color = getTypeColor(type);
-    typeSpan.style.marginRight = "4px";
-    const timeSpan = document.createElement("span");
-    timeSpan.textContent = `[${timestamp}]`;
-    timeSpan.style.color = "#888";
-    timeSpan.style.marginRight = "4px";
-    const messageSpan = document.createElement("span");
-    messageSpan.textContent = message;
-    logEntry.appendChild(typeSpan);
-    logEntry.appendChild(timeSpan);
-    logEntry.appendChild(messageSpan);
-    if (args.length > 0) {
-      logEntry.appendChild(formatArgs(args));
-    }
-    logContent.appendChild(logEntry);
-    if (autoScroll) {
-      logContent.scrollTop = logContent.scrollHeight;
-    }
-  }
-  return {
-    info: (message, ...args) => log("info", message, ...args),
-    warn: (message, ...args) => log("warn", message, ...args),
-    error: (message, ...args) => log("error", message, ...args),
-    debug: (message, ...args) => log("debug", message, ...args)
-  };
-}
-var logger = debugLogger();
-
 // replicache-utils/createReplicacheCore.ts
 var ReplicacheCore = class {
   store = {
@@ -762,7 +585,7 @@ var Replicache = class {
         const maxTime = Math.max(...times);
         const avgTime = times.reduce((acc, t) => acc + t, 0) / times.length;
         if (times.length > 0) {
-          logger?.info(this.#core._loggerPrefix(), `MUTATION ROUND TRIP TIME:minTime: ${minTime}, maxTime: ${maxTime}, avgTime: ${avgTime}, mutations count: ${times.length}`);
+          console.log(this.#core._loggerPrefix(), `MUTATION ROUND TRIP TIME:minTime: ${minTime}, maxTime: ${maxTime}, avgTime: ${avgTime}, mutations count: ${times.length}`);
         }
       },
       pullDelay: options.pullDelay ?? 100,
@@ -828,11 +651,11 @@ var Replicache = class {
         afterMutationId: this.#core.latestMutationId
       });
       let pullEnd = Date.now();
-      logger?.info(this.#core._loggerPrefix(), `/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches.`);
+      console.log(this.#core._loggerPrefix(), `/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches.`);
       this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id));
     } catch (e) {
       let pullEnd = Date.now();
-      logger?.error(this.#core._loggerPrefix(), `/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`);
+      console?.error(this.#core._loggerPrefix(), `/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`);
     }
   }
   subscribeToScanEntries(scanArg, onChange) {
@@ -878,7 +701,7 @@ var Replicache = class {
       });
       notYetPushed.forEach((m) => m.status = "pushed");
       let pushEnd = Date.now();
-      logger?.info(this.#core._loggerPrefix(), `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.length} mutations.`);
+      console.log(this.#core._loggerPrefix(), `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.length} mutations.`);
     } catch (e) {
       console.error("Error pushing mutations", e);
       let pushEnd = Date.now();
