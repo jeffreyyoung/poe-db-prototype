@@ -1,9 +1,9 @@
-import { createReadTransaction } from "./createReadTransaction.ts";
-import { Store } from "./Store.ts";
+import { createReadTransaction, MapLike } from "./createReadTransaction.ts";
 import { Operation } from "./server-types.ts";
+import { JsonValue } from "./replicache-types.ts";
 
-export function createWriteTransaction(store: Store, clientID: string) {
-  const tx = createReadTransaction(store, clientID);
+export function createWriteTransaction(mapLike: MapLike<string, JsonValue>, clientID: string) {
+  const tx = createReadTransaction(mapLike, clientID);
   const writeOperations: Operation[] = [];
 
   return {

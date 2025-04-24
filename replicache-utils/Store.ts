@@ -1,4 +1,5 @@
 
+import { JsonValue } from "./replicache-types.ts";
 import type { Mutation, Patch } from "./server-types.ts";
 
 type PendingMutation = {
@@ -11,6 +12,16 @@ export type Store = {
     kv: Map<string, {value: any, mutation_id: number}>;
     pendingMutations: PendingMutation[];
 }
+
+
+export type MapLike<K, V> = {
+    get: (key: K) => V | undefined;
+    has: (key: K) => boolean;
+    allKeys: () => Set<K>;
+    set: (key: K, value: V) => void;
+    delete: (key: K) => void;
+}
+
 
 export function createStore(): Store {
     return {

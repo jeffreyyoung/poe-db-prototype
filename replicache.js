@@ -139,45 +139,6 @@ function collapseMutations(mutations) {
   return mutation;
 }
 
-// replicache-utils/Store.ts
-function createStoreSnapshot(store) {
-  return {
-    kv: new Map(store.kv),
-    pendingMutations: store.pendingMutations.map((mutation) => ({
-      ...mutation,
-      kvUpdates: new Map(mutation.kvUpdates)
-    }))
-  };
-}
-function get(store, key) {
-  for (let i = 0; i < store.pendingMutations.length; i++) {
-    const mutation = store.pendingMutations.at(store.pendingMutations.length - 1 - i);
-    if (mutation && mutation.kvUpdates.has(key)) {
-      return mutation.kvUpdates.get(key);
-    }
-  }
-  return store.kv.get(key)?.value;
-}
-function has(store, key) {
-  const value = get(store, key);
-  return value !== void 0 && value !== null;
-}
-function keys(store) {
-  const keySet = /* @__PURE__ */ new Set();
-  for (const key of store.kv.keys()) {
-    keySet.add(key);
-  }
-  for (const mutation of store.pendingMutations) {
-    mutation.kvUpdates.forEach((_, key) => keySet.add(key));
-  }
-  for (const key of keySet) {
-    if (!has(store, key)) {
-      keySet.delete(key);
-    }
-  }
-  return keySet;
-}
-
 // replicache-utils/createReadTransaction.ts
 function scanArgToObject(arg) {
   if (typeof arg === "string") {
@@ -185,12 +146,12 @@ function scanArgToObject(arg) {
   }
   return arg;
 }
-function createReadTransaction(store, clientID) {
+function createReadTransaction(mapLike, clientID) {
   const _readKeys = /* @__PURE__ */ new Set();
   const _scannedKeys = /* @__PURE__ */ new Set();
   const readValue = (key) => {
     _readKeys.add(key);
-    return get(store, key);
+    return mapLike.get(key);
   };
   const tx = {
     clientID,
@@ -201,56 +162,56 @@ function createReadTransaction(store, clientID) {
     },
     has(key) {
       _readKeys.add(key);
-      return Promise.resolve(has(store, key));
+      return Promise.resolve(mapLike.has(key));
     },
     isEmpty() {
-      const keySet = keys(store);
+      const keySet = mapLike.allKeys();
       return Promise.resolve(keySet.size === 0);
     },
     scan(arg) {
       const { start, prefix, limit } = scanArgToObject(arg);
-      const keySet = keys(store);
-      let keys2 = Array.from(keySet).sort();
+      const keySet = mapLike.allKeys();
+      let keys = Array.from(keySet).sort();
       if (prefix) {
-        keys2 = keys2.filter((key) => key.startsWith(prefix));
+        keys = keys.filter((key) => key.startsWith(prefix));
       }
       if (start) {
-        keys2 = handleStart(keys2, start);
+        keys = handleStart(keys, start);
       }
       if (limit) {
-        keys2 = keys2.slice(0, limit);
+        keys = keys.slice(0, limit);
       }
       const getNthKey = (index) => {
-        _scannedKeys.add(keys2[index]);
-        return keys2[index];
+        _scannedKeys.add(keys[index]);
+        return keys[index];
       };
       async function getEntry(key) {
         return [key, await readValue(key)];
       }
       return {
-        keys: () => withToArray(keyAsyncIterable(getNthKey, keys2.length)),
-        values: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys2.length), readValue)),
-        entries: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys2.length), getEntry)),
+        keys: () => withToArray(keyAsyncIterable(getNthKey, keys.length)),
+        values: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys.length), readValue)),
+        entries: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys.length), getEntry)),
         [Symbol.asyncIterator]() {
-          return mapAsyncIterator(keyAsyncIterable(getNthKey, keys2.length), readValue);
+          return mapAsyncIterator(keyAsyncIterable(getNthKey, keys.length), readValue);
         }
       };
     }
   };
   return tx;
 }
-function handleStart(keys2, start) {
+function handleStart(keys, start) {
   if (!start) {
-    return keys2;
+    return keys;
   }
-  let startIndex = keys2.indexOf(start.key);
+  let startIndex = keys.indexOf(start.key);
   if (startIndex === -1) {
-    return keys2;
+    return keys;
   }
   if (start.exclusive) {
-    return keys2.slice(startIndex + 1);
+    return keys.slice(startIndex + 1);
   }
-  return keys2.slice(startIndex);
+  return keys.slice(startIndex);
 }
 function keyAsyncIterable(getNthKey, totalKeys) {
   return {
@@ -286,8 +247,8 @@ async function* mapAsyncIterator(asyncIterator, mapFn) {
 }
 
 // replicache-utils/createWriteTransaction.ts
-function createWriteTransaction(store, clientID) {
-  const tx = createReadTransaction(store, clientID);
+function createWriteTransaction(mapLike, clientID) {
+  const tx = createReadTransaction(mapLike, clientID);
   const writeOperations = [];
   return {
     ...tx,
@@ -326,6 +287,17 @@ function observePrefix(rep, scanArg, onChange) {
     lastEntries = entries;
     onChange(entries, { added, removed, changed, modified: changed });
   });
+}
+
+// replicache-utils/Store.ts
+function createStoreSnapshot(store) {
+  return {
+    kv: new Map(store.kv),
+    pendingMutations: store.pendingMutations.map((mutation) => ({
+      ...mutation,
+      kvUpdates: new Map(mutation.kvUpdates)
+    }))
+  };
 }
 
 // replicache-utils/SubscriptionManager.ts

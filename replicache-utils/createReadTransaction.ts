@@ -1,5 +1,6 @@
 import { Store, get, has, keys as getKeysSet } from "./Store.ts";
 import type { ReadTransaction, ScanOptions } from "./replicache-types.ts";
+import type { JsonValue } from "./replicache-types.ts";
 type ScanObjectArg = ScanOptions;
 export type ScanArg = ScanObjectArg
 
@@ -12,13 +13,22 @@ export function scanArgToObject(arg: ScanArg): Exclude<ScanObjectArg, string> {
 
 type ReadTransactionWithKeys = ReadTransaction & { _readKeys: Set<string>, _scannedKeys: Set<string> }
 
+export type MapLike<K, V> = {
+    get: (key: K) => V | null;
+    has: (key: K) => boolean;
+    allKeys: () => Set<K>;
+    set: (key: K, value: V) => void;
+    delete: (key: K) => void;
+}
 
-export function createReadTransaction(store: Store, clientID: string): ReadTransactionWithKeys {
+
+
+export function createReadTransaction(mapLike: MapLike<string, JsonValue>, clientID: string): ReadTransactionWithKeys {
     const _readKeys = new Set<string>();
     const _scannedKeys = new Set<string>();
     const readValue = (key: string) => {
         _readKeys.add(key);
-        return get(store, key);
+        return mapLike.get(key);
     }
 
     const tx: ReadTransactionWithKeys = {
@@ -30,15 +40,15 @@ export function createReadTransaction(store: Store, clientID: string): ReadTrans
         },
         has(key: string) {
             _readKeys.add(key);
-            return Promise.resolve(has(store, key));
+            return Promise.resolve(mapLike.has(key));
         },
         isEmpty() {
-            const keySet = getKeysSet(store);
+            const keySet = mapLike.allKeys();
             return Promise.resolve(keySet.size === 0);
         },
         scan(arg: ScanArg) {
             const { start,prefix, limit } = scanArgToObject(arg);
-            const keySet = getKeysSet(store);
+            const keySet = mapLike.allKeys();
             let keys = Array.from(keySet).sort();
             if (prefix) {
                 keys = keys.filter((key) => key.startsWith(prefix));

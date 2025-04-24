@@ -19,7 +19,7 @@ export type ScanResult<Key, Value> = {
 export type ReadTransaction = {
     clientID: string;
     isEmpty: () => Promise<boolean>;
-    get: (key: string) => Promise<JsonValue>;
+    get: (key: string) => Promise<JsonValue | null>;
     has: (key: string) => Promise<boolean>;
     scan: (options: ScanOptions) => ScanResult<string, JsonValue>;
 }
