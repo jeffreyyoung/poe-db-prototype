@@ -25,8 +25,8 @@ export function getAbly() {
 export const createValTownNetworkClient: NetworkClientFactory = ({
   spaceId,
   onPoke,
+  baseUrl = "https://jeffreyyoung-replicache_backend_fork1.web.val.run"
 }) => {
-  const baseURL = "https://jeffreyyoung-replicache_backend_fork1.web.val.run";
   if (!isTest()) {
     const ably = getAbly();
     const channel = ably.channels.get(spaceId);
@@ -42,7 +42,7 @@ export const createValTownNetworkClient: NetworkClientFactory = ({
       console.log("network -- pull", pullCount++);
       const pullStart = Date.now();
       const response = await fetch(
-        `${baseURL}/pull/${spaceId}?afterMutationId=${afterMutationId}`
+        `${baseUrl}/pull/${spaceId}?afterMutationId=${afterMutationId}`
       );
       const pullEnd = Date.now();
       if (!response.ok) {
@@ -72,7 +72,7 @@ export const createValTownNetworkClient: NetworkClientFactory = ({
         operations: collapseMutations(mutations).operations,
       };
       const pushStart = Date.now();
-      const response = await fetch(`${baseURL}/push/${spaceId}`, {
+      const response = await fetch(`${baseUrl}/push/${spaceId}`, {
         method: "POST",
         body: JSON.stringify(pushRequest),
       });

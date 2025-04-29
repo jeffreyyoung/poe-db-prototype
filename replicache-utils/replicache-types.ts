@@ -18,6 +18,7 @@ export type ScanResult<Key, Value> = {
 
 export type ReadTransaction = {
     clientID: string;
+    isServer: boolean;
     isEmpty: () => Promise<boolean>;
     get: (key: string) => Promise<JsonValue | null>;
     has: (key: string) => Promise<boolean>;

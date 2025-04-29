@@ -18,4 +18,5 @@ export type NetworkClientFactory = (args: {
   pullDelay?: number;
   pushDelay?: number;
   onPoke: (poke: PokeResult) => void;
+  baseUrl?: string;
 }) => NetworkClient;

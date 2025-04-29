@@ -1,6 +1,35 @@
 
-import { JsonValue } from "./replicache-types.ts";
 import type { Mutation, Patch } from "./server-types.ts";
+import type { MapLike } from "./createReadTransaction.ts";
+import type { JsonValue } from "./replicache-types.ts";
+
+export function createStoreSnapshot(store: Store): MapLike<string, JsonValue> {
+    const overrides: Map<string, { type: "set" | "del", value: JsonValue | null }> = new Map();
+    return {
+        get: (key: string) => {
+            const override = overrides.get(key);
+            if (override) {
+                return override.value;
+            }
+            return get(store, key);
+        },
+        has: (key: string) => {
+            const override = overrides.get(key);
+            if (override) {
+                return override.type === "set";
+            }
+            return has(store, key);
+        },
+        allKeys: () => keys(store),
+        set: (key: string, value: JsonValue) => {
+            overrides.set(key, { type: "set", value });
+        },
+        delete: (key: string) => {
+            overrides.set(key, { type: "del", value: null });
+        },
+        __overrides: overrides,
+    }
+}
 
 type PendingMutation = {
     mutation: Mutation;
@@ -13,31 +42,10 @@ export type Store = {
     pendingMutations: PendingMutation[];
 }
 
-
-export type MapLike<K, V> = {
-    get: (key: K) => V | undefined;
-    has: (key: K) => boolean;
-    allKeys: () => Set<K>;
-    set: (key: K, value: V) => void;
-    delete: (key: K) => void;
-}
-
-
 export function createStore(): Store {
     return {
         kv: new Map(),
         pendingMutations: [],
-    }
-}
-
-
-export function createStoreSnapshot(store: Store) {
-    return {
-        kv: new Map(store.kv),
-        pendingMutations: store.pendingMutations.map((mutation) => ({
-            ...mutation,
-            kvUpdates: new Map(mutation.kvUpdates),
-        })),
     }
 }
 

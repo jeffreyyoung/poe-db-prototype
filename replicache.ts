@@ -30,6 +30,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     pushDelay?: number;
     pullDelay?: number;
     networkClientFactory?: NetworkClientFactory;
+    baseUrl?: string;
   };
   #_debugLocalMutationIdToStartTime = new Map<number, number>();
   constructor(options: typeof Replicache.prototype.options) {
@@ -54,6 +55,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
 
     this.#networkClient = createNetworkClient({
       spaceId: this.#spaceId,
+      baseUrl: this.options.baseUrl,
       onPoke: (poke) => {
         const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
         if (shouldPull) {

@@ -1,4 +1,3 @@
-import { Store, get, has, keys as getKeysSet } from "./Store.ts";
 import type { ReadTransaction, ScanOptions } from "./replicache-types.ts";
 import type { JsonValue } from "./replicache-types.ts";
 type ScanObjectArg = ScanOptions;
@@ -19,11 +18,12 @@ export type MapLike<K, V> = {
     allKeys: () => Set<K>;
     set: (key: K, value: V) => void;
     delete: (key: K) => void;
+    __overrides: Map<K, { type: "set" | "del", value: V | null }>;
 }
 
 
 
-export function createReadTransaction(mapLike: MapLike<string, JsonValue>, clientID: string): ReadTransactionWithKeys {
+export function createReadTransaction(mapLike: MapLike<string, JsonValue>, clientID: string ): ReadTransactionWithKeys {
     const _readKeys = new Set<string>();
     const _scannedKeys = new Set<string>();
     const readValue = (key: string) => {
@@ -33,6 +33,7 @@ export function createReadTransaction(mapLike: MapLike<string, JsonValue>, clien
 
     const tx: ReadTransactionWithKeys = {
         clientID,
+        isServer: false,
         _readKeys,
         _scannedKeys,
         get(key: string) {

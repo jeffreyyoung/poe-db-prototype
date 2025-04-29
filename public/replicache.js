@@ -61,9 +61,9 @@ function getAbly() {
 }
 var createValTownNetworkClient = ({
   spaceId,
-  onPoke
+  onPoke,
+  baseUrl = "https://jeffreyyoung-replicache_backend_fork1.web.val.run"
 }) => {
-  const baseURL = "https://jeffreyyoung-replicache_backend_fork1.web.val.run";
   if (!isTest()) {
     const ably2 = getAbly();
     const channel = ably2.channels.get(spaceId);
@@ -77,7 +77,7 @@ var createValTownNetworkClient = ({
       console.log("network -- pull", pullCount++);
       const pullStart = Date.now();
       const response = await fetch(
-        `${baseURL}/pull/${spaceId2}?afterMutationId=${afterMutationId}`
+        `${baseUrl}/pull/${spaceId2}?afterMutationId=${afterMutationId}`
       );
       const pullEnd = Date.now();
       if (!response.ok) {
@@ -107,7 +107,7 @@ var createValTownNetworkClient = ({
         operations: collapseMutations(mutations).operations
       };
       const pushStart = Date.now();
-      const response = await fetch(`${baseURL}/push/${spaceId}`, {
+      const response = await fetch(`${baseUrl}/push/${spaceId}`, {
         method: "POST",
         body: JSON.stringify(pushRequest)
       });
@@ -155,6 +155,7 @@ function createReadTransaction(mapLike, clientID) {
   };
   const tx = {
     clientID,
+    isServer: false,
     _readKeys,
     _scannedKeys,
     get(key) {
@@ -171,47 +172,47 @@ function createReadTransaction(mapLike, clientID) {
     scan(arg) {
       const { start, prefix, limit } = scanArgToObject(arg);
       const keySet = mapLike.allKeys();
-      let keys = Array.from(keySet).sort();
+      let keys2 = Array.from(keySet).sort();
       if (prefix) {
-        keys = keys.filter((key) => key.startsWith(prefix));
+        keys2 = keys2.filter((key) => key.startsWith(prefix));
       }
       if (start) {
-        keys = handleStart(keys, start);
+        keys2 = handleStart(keys2, start);
       }
       if (limit) {
-        keys = keys.slice(0, limit);
+        keys2 = keys2.slice(0, limit);
       }
       const getNthKey = (index) => {
-        _scannedKeys.add(keys[index]);
-        return keys[index];
+        _scannedKeys.add(keys2[index]);
+        return keys2[index];
       };
       async function getEntry(key) {
         return [key, await readValue(key)];
       }
       return {
-        keys: () => withToArray(keyAsyncIterable(getNthKey, keys.length)),
-        values: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys.length), readValue)),
-        entries: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys.length), getEntry)),
+        keys: () => withToArray(keyAsyncIterable(getNthKey, keys2.length)),
+        values: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys2.length), readValue)),
+        entries: () => withToArray(mapAsyncIterator(keyAsyncIterable(getNthKey, keys2.length), getEntry)),
         [Symbol.asyncIterator]() {
-          return mapAsyncIterator(keyAsyncIterable(getNthKey, keys.length), readValue);
+          return mapAsyncIterator(keyAsyncIterable(getNthKey, keys2.length), readValue);
         }
       };
     }
   };
   return tx;
 }
-function handleStart(keys, start) {
+function handleStart(keys2, start) {
   if (!start) {
-    return keys;
+    return keys2;
   }
-  let startIndex = keys.indexOf(start.key);
+  let startIndex = keys2.indexOf(start.key);
   if (startIndex === -1) {
-    return keys;
+    return keys2;
   }
   if (start.exclusive) {
-    return keys.slice(startIndex + 1);
+    return keys2.slice(startIndex + 1);
   }
-  return keys.slice(startIndex);
+  return keys2.slice(startIndex);
 }
 function keyAsyncIterable(getNthKey, totalKeys) {
   return {
@@ -291,20 +292,66 @@ function observePrefix(rep, scanArg, onChange) {
 
 // replicache-utils/Store.ts
 function createStoreSnapshot(store) {
+  const overrides = /* @__PURE__ */ new Map();
   return {
-    kv: new Map(store.kv),
-    pendingMutations: store.pendingMutations.map((mutation) => ({
-      ...mutation,
-      kvUpdates: new Map(mutation.kvUpdates)
-    }))
+    get: (key) => {
+      const override = overrides.get(key);
+      if (override) {
+        return override.value;
+      }
+      return get(store, key);
+    },
+    has: (key) => {
+      const override = overrides.get(key);
+      if (override) {
+        return override.type === "set";
+      }
+      return has(store, key);
+    },
+    allKeys: () => keys(store),
+    set: (key, value) => {
+      overrides.set(key, { type: "set", value });
+    },
+    delete: (key) => {
+      overrides.set(key, { type: "del", value: null });
+    },
+    __overrides: overrides
   };
+}
+function get(store, key) {
+  for (let i = 0; i < store.pendingMutations.length; i++) {
+    const mutation = store.pendingMutations.at(store.pendingMutations.length - 1 - i);
+    if (mutation && mutation.kvUpdates.has(key)) {
+      return mutation.kvUpdates.get(key);
+    }
+  }
+  return store.kv.get(key)?.value;
+}
+function has(store, key) {
+  const value = get(store, key);
+  return value !== void 0 && value !== null;
+}
+function keys(store) {
+  const keySet = /* @__PURE__ */ new Set();
+  for (const key of store.kv.keys()) {
+    keySet.add(key);
+  }
+  for (const mutation of store.pendingMutations) {
+    mutation.kvUpdates.forEach((_, key) => keySet.add(key));
+  }
+  for (const key of keySet) {
+    if (!has(store, key)) {
+      keySet.delete(key);
+    }
+  }
+  return keySet;
 }
 
 // replicache-utils/SubscriptionManager.ts
 function createSubscriptionManager(store, clientID) {
   const subscriptions = /* @__PURE__ */ new Map();
   async function _runQuery(queryFn) {
-    const tx = createReadTransaction(store, clientID);
+    const tx = createReadTransaction(createStoreSnapshot(store), clientID);
     const result = await queryFn(tx);
     return { result, tx };
   }
@@ -456,7 +503,7 @@ var ReplicacheCore = class {
     return result;
   }
   async query(cb) {
-    const tx = createReadTransaction(this.store, this.#clientId);
+    const tx = createReadTransaction(createStoreSnapshot(this.store), this.#clientId);
     const result = await cb(tx);
     return result;
   }
@@ -537,6 +584,7 @@ var Replicache = class {
     }
     this.#networkClient = createNetworkClient({
       spaceId: this.#spaceId,
+      baseUrl: this.options.baseUrl,
       onPoke: (poke) => {
         const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
         if (shouldPull) {

@@ -1,5 +1,5 @@
 import { createReadTransaction } from "./createReadTransaction.ts";
-import { Store } from "./Store.ts";
+import { createStoreSnapshot, Store } from "./Store.ts";
 import type { ReadTransactionWithKeys } from "./replicache-internal-types.ts";
 
 type QueryFunction = (tx: ReadTransactionWithKeys) => Promise<any>;
@@ -16,7 +16,7 @@ export function createSubscriptionManager(store: Store, clientID: string) {
     >();
 
     async function _runQuery(queryFn: QueryFunction) {
-        const tx = createReadTransaction(store, clientID);
+        const tx = createReadTransaction(createStoreSnapshot(store), clientID);
         const result = await queryFn(tx);
         return { result, tx };
     }
