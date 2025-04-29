@@ -71,7 +71,7 @@ export declare class Replicache<Mutators extends Record<string, (tx: WriteTransa
 Examples
 
 <example_todo_app_logic>
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@0a3b6f3c2468f436b60e9473e66c623f694df6de/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@16ef0663f84d74c800c4f88e5dce8f334148a318/replicache.js"
 
 const rep = new Replicache({
    pushDelay: 100,
@@ -117,7 +117,7 @@ rep.subscribeToScanEntries("todos/", (entries, changes) => {
 </example_todo_app_logic>
 
 <example_painting_app_logic>
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@0a3b6f3c2468f436b60e9473e66c623f694df6de/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@16ef0663f84d74c800c4f88e5dce8f334148a318/replicache.js"
 
 const rep = new Replicache({
    pushDelay: 100,
