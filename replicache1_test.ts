@@ -6,7 +6,7 @@ function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-const baseUrl = "https://poe-db-prototype.fly.dev"
+const baseUrl = "https://poe-db-653909965599.us-central1.run.app"
 
 Deno.test("test", async () => {
     try {

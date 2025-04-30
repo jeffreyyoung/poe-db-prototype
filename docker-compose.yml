@@ -3,7 +3,7 @@ version: "3"
 services:
   web:
     build: .
-    container_name: deno-container
-    image: deno-image
+    container_name: jeff-poe-container
+    image: jeff-poe-image
     ports:
       - "8000:8000"

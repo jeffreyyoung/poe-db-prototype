@@ -55,7 +55,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
 
     this.#networkClient = createNetworkClient({
       spaceId: this.#spaceId,
-      baseUrl: this.options.baseUrl,
+      baseUrl: this.options.baseUrl || "https://poe-db-653909965599.us-central1.run.app",
       onPoke: (poke) => {
         const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
         if (shouldPull) {
