@@ -2,6 +2,11 @@ import Ably from "https://esm.sh/ably";
 import { DatabaseSync } from "node:sqlite";
 
 
+const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*",
+}
+
 type InStatement = {
     sql: string;
     args: any[];
@@ -77,7 +82,7 @@ function createErrorResponse(message: string, status: number = 400): Response {
     }),
     {
       status,
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...corsHeaders },
     },
   );
 }
@@ -200,7 +205,7 @@ export default async function server(request: Request): Promise<Response> {
         };
 
         return new Response(safeStringify(pullResponse), {
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
 
@@ -219,7 +224,7 @@ export default async function server(request: Request): Promise<Response> {
         patches,
       };
       return new Response(safeStringify(pullResponse), {
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     } catch (pullError) {
       console.error("Error in pull endpoint:", pullError);
@@ -284,7 +289,7 @@ RETURNING last_mutation_id
 
       // Return an empty object as per PushResponse type
       return new Response(safeStringify({}), {
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     } catch (pushError) {
       console.error("Unexpected error in push endpoint:", pushError);
