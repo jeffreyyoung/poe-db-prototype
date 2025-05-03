@@ -1,12 +1,12 @@
 /**
  * Repli-Cache: A Replicache-compatible client with custom internals
  */
-import { ScanArg } from "./replicache-utils/createReadTransaction.ts";
-import { createWriteTransaction } from "./replicache-utils/createWriteTransaction.ts";
+import { ScanArg } from "./replicache-utils/core/createReadTransaction.ts";
+import { createWriteTransaction } from "./replicache-utils/core/createWriteTransaction.ts";
 import { throttle } from "./replicache-utils/throttlePromise.ts";
-import { createValTownNetworkClient } from "./replicache-utils/NetworkClientValTown.ts";
-import { NetworkClient, NetworkClientFactory } from "./replicache-utils/NetworkClient.ts";
-import ReplicacheCore from "./replicache-utils/createReplicacheCore.ts";
+import { createValTownNetworkClient } from "./replicache-utils/network/NetworkClientValTown.ts";
+import { NetworkClient, NetworkClientFactory } from "./replicache-utils/network/NetworkClient.ts";
+import ReplicacheCore from "./replicache-utils/core/createReplicacheCore.ts";
 import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
 import { ChangeSummary } from "./replicache-utils/replicache-types.ts";
 import type { ReadTransaction, Replicache as ReplicacheType } from "./replicache-utils/replicache-types.ts";

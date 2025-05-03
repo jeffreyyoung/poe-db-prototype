@@ -1,6 +1,6 @@
 
 import type { Mutation, Patch } from "./server-types.ts";
-import type { MapLike } from "./createReadTransaction.ts";
+import type { MapLike } from "./core/createReadTransaction.ts";
 import type { JsonValue } from "./replicache-types.ts";
 
 export function createStoreSnapshot(store: Store): MapLike<string, JsonValue> {

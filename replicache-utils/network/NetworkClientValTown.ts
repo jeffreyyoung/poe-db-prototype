@@ -1,9 +1,9 @@
-import { isTest } from "./isTest.ts";
+import { isTest } from "../isTest.ts";
 import { NetworkClientFactory } from "./NetworkClient.ts";
 import {
   Mutation,
   PushRequest,
-} from "./server-types.ts";
+} from "../server-types.ts";
 import Ably from "https://esm.sh/ably";
 let pokeCount = 0;
 let pullCount = 0;

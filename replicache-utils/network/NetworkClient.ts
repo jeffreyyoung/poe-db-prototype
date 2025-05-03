@@ -3,7 +3,7 @@ import {
   PullResponse,
   PushRequest,
   PushResponse,
-} from "./server-types.ts";
+} from "../server-types.ts";
 
 export type NetworkClient = {
   pull: (args: {

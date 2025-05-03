@@ -1,10 +1,12 @@
 import { assertEquals } from "@std/assert/equals";
 import { assertSpyCalls, spy } from "jsr:@std/testing/mock";
 import { Replicache } from "./replicache.ts";
+import { createTestClient } from "./replicache-utils/network/TestNetworkClient.ts";
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
+
 
 Deno.test("test", async () => {
     try {
@@ -15,6 +17,7 @@ Deno.test("test", async () => {
                 await tx.set(key, value)
             }
         },
+        
     })
     console.log("rep", rep)
     for (let i = 0; i < 10; i++) {
@@ -54,6 +57,7 @@ Deno.test("subscriptions", async () => {
                 await tx.set(key, value)
             }
         },
+        networkClientFactory: createTestClient
     })
     const testSubscription = spy((res) => { console.log("subscription called!!")})
 
@@ -80,6 +84,7 @@ Deno.test("subscription with multiple keys", async () => {
                 await tx.set(key, value)
             }
         },
+        networkClientFactory: createTestClient
     })
     const testSubscription = spy((res) => { console.log("subscription called!!")})
 
@@ -113,6 +118,7 @@ Deno.test("mutation_ids", async () => {
                 await tx.set(key, value)
             }
         },
+        networkClientFactory: createTestClient
     });
     // @ts-ignore
     await rep.mutate.setValue({ key: "test", value: "test" })

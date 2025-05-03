@@ -1,4 +1,4 @@
-import { createReadTransaction } from "./createReadTransaction.ts";
+import { createReadTransaction } from "./core/createReadTransaction.ts";
 import { createStoreSnapshot, Store } from "./Store.ts";
 import type { ReadTransactionWithKeys } from "./replicache-internal-types.ts";
 

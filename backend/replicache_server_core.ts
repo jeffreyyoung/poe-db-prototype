@@ -1,7 +1,7 @@
-import Ably from "https://esm.sh/ably";
-import { DatabaseSync } from "node:sqlite";
-
-
+type DatabaseSync = {
+    exec: any,
+    prepare: any,
+};
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "*",
@@ -12,14 +12,9 @@ type InStatement = {
     args: any[];
 } | string
 
-const db = new DatabaseSync("test.db");
-
-const ably = new Ably.Realtime("frBw7w.OhTF1A:ZQNStvW9BVmKiVwQ3ZqOtTN8T5-QaIlmkQ5a675c2iM");
 
 const KEY = "replicache"; // Use a fixed valid database identifier instead of filename
 const SCHEMA_VERSION = 3; // Increment schema version to create fresh tables
-
-const NO_OP_QUERY = `SELECT 1 WHERE 0`;
 
 type PokeResult = {
   mutationIds: number[];
@@ -104,7 +99,7 @@ function safeStringify(obj: any) {
   }
 }
 
-function batch(statements: InStatement[]) {
+function batch(db: DatabaseSync, statements: InStatement[]) {
     const results = [];
     for (const statement of statements) {
         if (typeof statement === "string") {
@@ -118,9 +113,9 @@ function batch(statements: InStatement[]) {
     return Promise.all(results) as Promise<any[]>;
 }
 
-async function ensureTablesExist() {
+async function ensureTablesExist(db: DatabaseSync) {
   try {
-    await batch([
+    await batch(db, [
       `CREATE TABLE IF NOT EXISTS ${KEY}_spaces_${SCHEMA_VERSION} (
         space TEXT PRIMARY KEY,
         last_mutation_id INTEGER NOT NULL DEFAULT 0
@@ -153,16 +148,21 @@ async function ensureTablesExist() {
 
 let needsToCreateTables = true;
 
-async function maybeCreateTables() {
+async function maybeCreateTables(db: DatabaseSync) {
   if (needsToCreateTables) {
-    await ensureTablesExist();
+    await ensureTablesExist(db);
     needsToCreateTables = false;
   }
 }
-export default async function server(request: Request): Promise<Response> {
+
+export function createServer(
+    db: DatabaseSync,
+    sendPoke: (spaceId: string, result: PokeResult) => Promise<any>,
+) {
+    return async (request: Request): Promise<Response> => {
   try {
     // Ensure tables exist before any operations
-    await maybeCreateTables();
+    await maybeCreateTables(db);
   } catch (setupError) {
     return createErrorResponse("Failed to set up database tables", 500);
   }
@@ -179,7 +179,7 @@ export default async function server(request: Request): Promise<Response> {
       console.log(`Pull request: space=${space}, afterMutationId=${afterMutationId}`);
 
       // Check if space exists
-      const [spaceQuery, keyValueQuery] = await batch([
+      const [spaceQuery, keyValueQuery] = await batch(db, [
         {
           sql: `SELECT last_mutation_id 
         FROM ${KEY}_spaces_${SCHEMA_VERSION} 
@@ -256,7 +256,7 @@ export default async function server(request: Request): Promise<Response> {
 
       const operations = body.operations;
 
-      const [updateLastMutationIdResult, ...results] = await batch([
+      const [updateLastMutationIdResult, ...results] = await batch(db, [
         {
           // update mutation_id
           sql: `
@@ -284,8 +284,7 @@ RETURNING last_mutation_id
         localMutationIds,
         mutationIds: [newMutationId],
       };
-      const channel = ably.channels.get(space);
-      await channel.publish("poke", pokeResult);
+      await sendPoke(space, pokeResult)
 
       // Return an empty object as per PushResponse type
       return new Response(safeStringify({}), {
@@ -300,6 +299,7 @@ RETURNING last_mutation_id
   // Default response for unexpected actions
   console.warn(`Unexpected action: ${action}`);
   return createErrorResponse(`Unsupported action: ${action}`, 400);
+}
 }
 
 function localMutationIdToInstatement(
@@ -342,5 +342,3 @@ function operationToPatch(operation: Operation, newMutationId: number): Patch {
     mutationId: newMutationId,
   };
 }
-
-Deno.serve(server);

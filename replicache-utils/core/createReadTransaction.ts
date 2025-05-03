@@ -1,5 +1,5 @@
-import type { ReadTransaction, ScanOptions } from "./replicache-types.ts";
-import type { JsonValue } from "./replicache-types.ts";
+import type { ReadTransaction, ScanOptions } from "../replicache-types.ts";
+import type { JsonValue } from "../replicache-types.ts";
 type ScanObjectArg = ScanOptions;
 export type ScanArg = ScanObjectArg
 

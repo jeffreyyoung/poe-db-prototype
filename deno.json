@@ -1,9 +1,9 @@
 {
   "tasks": {
     "dev": "deno test --watch --ignore=replicache_test.ts",
-    "test": "deno test --ignore=replicache_test.ts",
+    "test": "deno test --ignore=replicache_test.ts,replicache1_test.ts",
     "test:full": "deno test --allow-net",
-    "backend": "deno run --allow-net --allow-read --allow-write backend/replicache_serve.ts"
+    "backend": "deno run --allow-net --allow-read --allow-write backend/replicache_server.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1",
