@@ -17,7 +17,7 @@ Deno.test("test", async () => {
                 await tx.set(key, value)
             }
         },
-        
+        networkClientFactory: createTestClient
     })
     console.log("rep", rep)
     for (let i = 0; i < 10; i++) {

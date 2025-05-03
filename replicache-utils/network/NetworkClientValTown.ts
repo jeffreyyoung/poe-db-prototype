@@ -61,16 +61,8 @@ export const createValTownNetworkClient: NetworkClientFactory = ({
       );
       return data;
     },
-    push: async (args) => {
+    push: async (pushRequest) => {
       console.log("network -- push", pushCount++);
-      const mutations = args.mutations;
-      const pushRequest: PushRequest = {
-        mutations: mutations.map((m) => ({
-          ...m,
-          operations: [],
-        })),
-        operations: collapseMutations(mutations).operations,
-      };
       const pushStart = Date.now();
       const response = await fetch(`${baseUrl}/push/${spaceId}`, {
         method: "POST",
@@ -83,7 +75,7 @@ export const createValTownNetworkClient: NetworkClientFactory = ({
         throw new Error(`Failed to push to ${spaceId}: ${response.statusText}`);
       }
       const data = await response.json();
-      console.log("pushed", mutations.length, "mutations in", timeInMs, "ms", ...(isTest() ? [] : ['request', pushRequest, 'response', data]));
+      console.log("pushed", pushRequest.mutations.length, "mutations in", timeInMs, "ms", ...(isTest() ? [] : ['request', pushRequest, 'response', data]));
       return data;
     },
   };

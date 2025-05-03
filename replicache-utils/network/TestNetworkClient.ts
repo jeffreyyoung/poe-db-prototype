@@ -11,14 +11,14 @@ export const createTestClient: NetworkClientFactory = (args) => {
     })
     return {
         pull: async (pullArgs) => {
-            const req = new Request(`http://localhost/${args.spaceId}/pull?afterMutationId=${pullArgs.afterMutationId}`)
+            const req = new Request(`http://localhost/pull/${args.spaceId}?afterMutationId=${pullArgs.afterMutationId}`)
             const res = await testServer(req);
             const json = await res.json();
             return json;
 
         },
         push: async (pushArgs) => {
-            const req = new Request(`http://localhost/${args.spaceId}/push`, {
+            const req = new Request(`http://localhost/push/${args.spaceId}`, {
                 method: 'POST',
                 body: JSON.stringify(pushArgs),
             });

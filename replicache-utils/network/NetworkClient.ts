@@ -10,7 +10,7 @@ export type NetworkClient = {
     spaceId: string;
     afterMutationId: number;
   }) => Promise<PullResponse>;
-  push: (args: Omit<PushRequest, "operations">) => Promise<PushResponse>;
+  push: (args: PushRequest) => Promise<PushResponse>;
 };
 
 export type NetworkClientFactory = (args: {

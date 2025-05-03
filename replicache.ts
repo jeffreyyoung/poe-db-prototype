@@ -4,7 +4,7 @@
 import { ScanArg } from "./replicache-utils/core/createReadTransaction.ts";
 import { createWriteTransaction } from "./replicache-utils/core/createWriteTransaction.ts";
 import { throttle } from "./replicache-utils/throttlePromise.ts";
-import { createValTownNetworkClient } from "./replicache-utils/network/NetworkClientValTown.ts";
+import { collapseMutations, createValTownNetworkClient } from "./replicache-utils/network/NetworkClientValTown.ts";
 import { NetworkClient, NetworkClientFactory } from "./replicache-utils/network/NetworkClient.ts";
 import ReplicacheCore from "./replicache-utils/core/createReplicacheCore.ts";
 import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
@@ -215,9 +215,10 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     notYetPushed.forEach((m) => (m.status = "pending"));
     let pushStart = Date.now();
     try {
-      
+      const mutations = notYetPushed.map((m) => m.mutation);
       await this.#networkClient.push({
-        mutations: notYetPushed.map((m) => m.mutation)
+        mutations,
+        operations: collapseMutations(mutations).operations,
       });
       // now the pushed mutations are in push state
       notYetPushed.forEach((m) => (m.status = "pushed"));
