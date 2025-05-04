@@ -4,6 +4,7 @@ import { Replicache } from './replicache.js';
 const rep = new Replicache({
     pushDelay: 100,
     pullDelay: 100,
+    baseUrl: "https://poe-db-prototype.fly.dev",
     mutators: {
         createTodo: async (tx, {id, text}) => {
             await tx.set(`todos/${id}`, {

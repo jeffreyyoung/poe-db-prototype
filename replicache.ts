@@ -65,7 +65,8 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       createValTownNetworkClient({
         baseUrl:
           this.options.baseUrl ||
-          "https://poe-db-653909965599.us-central1.run.app",
+          "https://poe-db-prototype.fly.dev"
+          // "https://poe-db-653909965599.us-central1.run.app",
       });
     this.#networkClient.subscribeToPoke(
       { spaceId: this.#spaceId },
