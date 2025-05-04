@@ -1,9 +1,9 @@
-import { isTest } from "./isTest.ts";
+import { isTest } from "../isTest.ts";
 import { NetworkClientFactory } from "./NetworkClient.ts";
 import {
   Mutation,
   PushRequest,
-} from "./server-types.ts";
+} from "../server-types.ts";
 import Ably from "https://esm.sh/ably";
 let pokeCount = 0;
 let pullCount = 0;
@@ -23,21 +23,26 @@ export function getAbly() {
   }
 
 export const createValTownNetworkClient: NetworkClientFactory = ({
-  spaceId,
-  onPoke,
   baseUrl = "https://jeffreyyoung-replicache_backend_fork1.web.val.run"
 }) => {
-  if (!isTest()) {
-    const ably = getAbly();
-    const channel = ably.channels.get(spaceId);
-  
-    channel.subscribe("poke", (message) => {
-      console.log("network -- poke", pokeCount++);
-      onPoke(message.data);
-    });
-  }
 
   return {
+    subscribeToPoke: ({ spaceId}, onPoke) => {
+      const ably = getAbly();
+      const channel = ably.channels.get(spaceId);
+      channel.subscribe("poke", (message) => {
+        console.log("network -- poke", pokeCount++);
+        onPoke(message.data);
+      });
+      return () => {
+        channel.unsubscribe();
+      }
+    },
+    unsubscribeFromPoke: ({ spaceId }: { spaceId: string }) => {
+      const ably = getAbly();
+      const channel = ably.channels.get(spaceId);
+      channel.unsubscribe();
+    },
     pull: async ({ spaceId, afterMutationId }) => {
       console.log("network -- pull", pullCount++);
       const pullStart = Date.now();
@@ -61,16 +66,9 @@ export const createValTownNetworkClient: NetworkClientFactory = ({
       );
       return data;
     },
-    push: async (args) => {
+    push: async (pushRequest) => {
+      const spaceId = pushRequest.spaceId;
       console.log("network -- push", pushCount++);
-      const mutations = args.mutations;
-      const pushRequest: PushRequest = {
-        mutations: mutations.map((m) => ({
-          ...m,
-          operations: [],
-        })),
-        operations: collapseMutations(mutations).operations,
-      };
       const pushStart = Date.now();
       const response = await fetch(`${baseUrl}/push/${spaceId}`, {
         method: "POST",
@@ -83,7 +81,7 @@ export const createValTownNetworkClient: NetworkClientFactory = ({
         throw new Error(`Failed to push to ${spaceId}: ${response.statusText}`);
       }
       const data = await response.json();
-      console.log("pushed", mutations.length, "mutations in", timeInMs, "ms", ...(isTest() ? [] : ['request', pushRequest, 'response', data]));
+      console.log("pushed", pushRequest.mutations.length, "mutations in", timeInMs, "ms", ...(isTest() ? [] : ['request', pushRequest, 'response', data]));
       return data;
     },
   };

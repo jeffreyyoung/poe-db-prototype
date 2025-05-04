@@ -1,5 +1,5 @@
-import { ScanArg } from "./createReadTransaction.ts";
-import ReplicacheCore from "./createReplicacheCore.ts";
+import { ScanArg } from "./core/createReadTransaction.ts";
+import ReplicacheCore from "./core/createReplicacheCore.ts";
 import { JsonValue, ChangeSummary, ScanOptions } from "./replicache-types.ts";
 
 

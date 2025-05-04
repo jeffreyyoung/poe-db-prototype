@@ -6,9 +6,14 @@ function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-const baseUrl = "https://poe-db-653909965599.us-central1.run.app"
+const e2eOps = {
+    sanitizeResources: false,
+    sanitizeOps: false,
+}
 
-Deno.test("test", async () => {
+const baseUrl = Deno.env.get("REPLICACHE_BASE_URL") || "https://poe-db-653909965599.us-central1.run.app"
+
+Deno.test("test", e2eOps, async () => {
     try {
     const rep = new Replicache({
         spaceID: "test"+Math.floor(Math.random()*9999999),
@@ -49,7 +54,7 @@ Deno.test("test", async () => {
 })
 
 
-Deno.test("subscriptions", async () => {
+Deno.test("subscriptions", e2eOps, async () => {
     const rep = new Replicache({
         spaceID: "test"+Math.floor(Math.random()*9999999),
         baseUrl,
@@ -76,7 +81,7 @@ Deno.test("subscriptions", async () => {
     assertSpyCalls(testSubscription, 2)
 })
 
-Deno.test("subscription with multiple keys", async () => {
+Deno.test("subscription with multiple keys", e2eOps, async () => {
     const rep = new Replicache({
         spaceID: "test"+Math.floor(Math.random()*9999999),
         baseUrl,
@@ -92,25 +97,28 @@ Deno.test("subscription with multiple keys", async () => {
         const keys = await tx.scan({ prefix: "meow/" }).values().toArray();
         return keys
     }, testSubscription);
+    await sleep(100)
+    assertSpyCalls(testSubscription, 1)
 
     // @ts-ignore
     await rep.mutate.setValue({ key: "meow/1", value: "test" });
     await sleep(500)
-    assertSpyCalls(testSubscription, 1)
+    assertSpyCalls(testSubscription, 3)
 
     // @ts-ignore
     await rep.mutate.setValue({ key: "meow/2", value: "test" });
     await sleep(500)
-    assertSpyCalls(testSubscription, 2)
+    assertSpyCalls(testSubscription, 5)
 
     // @ts-ignore
     await rep.mutate.setValue({ key: "notmeow/3", value: "test" });
     await sleep(500)
-    assertSpyCalls(testSubscription, 2)
+    assertSpyCalls(testSubscription, 5)
+    await sleep(500)
 })
 
 
-Deno.test("mutation_ids", async () => {
+Deno.test("mutation_ids", e2eOps, async () => {
     const rep = new Replicache({
         spaceID: "test"+Math.floor(Math.random()*9999999),
         baseUrl,
@@ -134,6 +142,6 @@ Deno.test("mutation_ids", async () => {
 })
 
 
-Deno.test("This one should fail because certain things are not cleaned up", () => {
+Deno.test("This one should fail because certain things are not cleaned up", e2eOps, () => {
     assertEquals(true, true, "yay");
 })

@@ -1,4 +1,4 @@
-import ReplicacheCore from "./createReplicacheCore.ts";
+import ReplicacheCore from "./core/createReplicacheCore.ts";
 import { createObserverPrefixSpy } from "./testHelpers.ts";
 
 

@@ -1,9 +1,12 @@
 {
   "tasks": {
-    "dev": "deno test --watch --ignore=replicache_test.ts",
-    "test": "deno test --ignore=replicache_test.ts",
-    "test:full": "deno test --allow-net",
-    "backend": "deno run --allow-net --allow-read --allow-write backend/replicache_serve.ts"
+    "dev": "deno test --watch --ignore=replicache_e2e_test.ts",
+    "test": "deno test --ignore=replicache_e2e_test.ts",
+    "test:full": "deno test --allow-net --allow-env",
+    "docker:up": "docker-compose up -d --build",
+    "docker:down": "docker-compose down",
+    "test:docker": "deno task docker:up && REPLICACHE_BASE_URL=http://localhost:8000 deno test --allow-net --allow-env && deno task docker:down",
+    "backend": "deno run --allow-net --allow-read --allow-write backend/replicache_server.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1",

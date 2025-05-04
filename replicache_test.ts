@@ -1,10 +1,13 @@
 import { assertEquals } from "@std/assert/equals";
 import { assertSpyCalls, spy } from "jsr:@std/testing/mock";
 import { Replicache } from "./replicache.ts";
+import { createTestClient } from "./replicache-utils/network/TestNetworkClient.ts";
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms))
 }
+
+const testClient = createTestClient({})
 
 Deno.test("test", async () => {
     try {
@@ -15,6 +18,7 @@ Deno.test("test", async () => {
                 await tx.set(key, value)
             }
         },
+        networkClient: testClient
     })
     console.log("rep", rep)
     for (let i = 0; i < 10; i++) {
@@ -54,6 +58,7 @@ Deno.test("subscriptions", async () => {
                 await tx.set(key, value)
             }
         },
+        networkClient: testClient
     })
     const testSubscription = spy((res) => { console.log("subscription called!!")})
 
@@ -80,28 +85,37 @@ Deno.test("subscription with multiple keys", async () => {
                 await tx.set(key, value)
             }
         },
+        networkClient: testClient
     })
+    await rep.hasCompletedInitialPull()
     const testSubscription = spy((res) => { console.log("subscription called!!")})
 
     rep.subscribe(async (tx) => {
-        const keys = await tx.scan({ prefix: "meow/" }).values().toArray();
+        const keys = await tx.scan({ prefix: "meow/" }).keys().toArray();
         return keys
     }, testSubscription);
+    await sleep(10);
+    assertSpyCalls(testSubscription, 1)
+    assertEquals(testSubscription.calls[0].args[0], [])
 
     // @ts-ignore
     await rep.mutate.setValue({ key: "meow/1", value: "test" });
-    await sleep(500)
-    assertSpyCalls(testSubscription, 1)
+    await sleep(100)
+    console.log("testSubscription", testSubscription.calls.map((c) => c.args))
+    assertEquals(testSubscription.calls[1].args[0], ["meow/1"])
+    // called once for local mutation, and once for real result
+    assertSpyCalls(testSubscription, 2)
 
     // @ts-ignore
     await rep.mutate.setValue({ key: "meow/2", value: "test" });
-    await sleep(500)
-    assertSpyCalls(testSubscription, 2)
+    await sleep(100)
+    assertEquals(testSubscription.calls[2].args[0], ["meow/1", "meow/2"])
+    assertSpyCalls(testSubscription, 3)
 
     // @ts-ignore
     await rep.mutate.setValue({ key: "notmeow/3", value: "test" });
-    await sleep(500)
-    assertSpyCalls(testSubscription, 2)
+    await sleep(100)
+    assertSpyCalls(testSubscription, 3)
 })
 
 
@@ -113,16 +127,21 @@ Deno.test("mutation_ids", async () => {
                 await tx.set(key, value)
             }
         },
+        networkClient: testClient
     });
+    console.log("about to mutate1" )
     // @ts-ignore
     await rep.mutate.setValue({ key: "test", value: "test" })
     await rep.push();
     await rep.pull();
     assertEquals(rep.debug().lastMutationId, 1, "mutation id should be 1")
 
+    console.log("about to mutate2" )
     // @ts-ignore
     await rep.mutate.setValue({ key: "test", value: "test2" })
+    console.log("about to push2" )
     await rep.push();
+    console.log("about to pull2" )
     await rep.pull();
     assertEquals(rep.debug().lastMutationId, 2, "mutation id should be 2")
 })

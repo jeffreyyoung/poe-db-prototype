@@ -1,6 +1,6 @@
 import { createReadTransaction, MapLike } from "./createReadTransaction.ts";
-import { Operation } from "./server-types.ts";
-import { JsonValue } from "./replicache-types.ts";
+import { Operation } from "../server-types.ts";
+import { JsonValue } from "../replicache-types.ts";
 
 export function createWriteTransaction(mapLike: MapLike<string, JsonValue>, clientID: string) {
   const tx = createReadTransaction(mapLike, clientID);

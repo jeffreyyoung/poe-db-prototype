@@ -527,6 +527,7 @@
     ],
     "packageJson": {
       "dependencies": [
+        "npm:@flydotio/dockerfile@~0.7.10",
         "npm:express@^4.18.2"
       ]
     }

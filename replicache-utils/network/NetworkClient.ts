@@ -3,20 +3,20 @@ import {
   PullResponse,
   PushRequest,
   PushResponse,
-} from "./server-types.ts";
+} from "../server-types.ts";
+
+type OffFn = () => void;
 
 export type NetworkClient = {
   pull: (args: {
     spaceId: string;
     afterMutationId: number;
   }) => Promise<PullResponse>;
-  push: (args: Omit<PushRequest, "operations">) => Promise<PushResponse>;
+  push: (args: PushRequest & { spaceId: string }) => Promise<PushResponse>;
+  subscribeToPoke: (args: { spaceId: string }, callback: (res: PokeResult) => void) => OffFn
+  unsubscribeFromPoke: (args: { spaceId: string }) => void
 };
 
 export type NetworkClientFactory = (args: {
-  spaceId: string;
-  pullDelay?: number;
-  pushDelay?: number;
-  onPoke: (poke: PokeResult) => void;
   baseUrl?: string;
 }) => NetworkClient;

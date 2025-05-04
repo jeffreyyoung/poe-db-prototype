@@ -1,4 +1,4 @@
-import ReplicacheCore from "./createReplicacheCore.ts";
+import ReplicacheCore from "./core/createReplicacheCore.ts";
 import { assertSpyCall, assertSpyCalls, spy } from "@std/testing/mock";
 import { sleep } from "./sleep.ts";
 import { ObservePrefixOnChange } from "./observePrefix.ts";

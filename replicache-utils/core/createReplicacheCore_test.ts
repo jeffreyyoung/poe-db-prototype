@@ -1,8 +1,8 @@
 import { assertEquals } from "@std/assert/equals";
 import ReplicacheCore from "./createReplicacheCore.ts";
-import { sleep } from "./sleep.ts";
-import { createSubscriptionSpy } from "./testHelpers.ts";
-import { runMutator } from "./sandbox/mutatorRunner.ts";
+import { sleep } from "../sleep.ts";
+import { createSubscriptionSpy } from "../testHelpers.ts";
+import { runMutator } from "../sandbox/mutatorRunner.ts";
 
 Deno.test("basic queries work", async () => {
   const core = new ReplicacheCore({

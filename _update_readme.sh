@@ -7,7 +7,7 @@ COMMIT_HASH=$(git rev-parse HEAD)
 TEMPLATE_CONTENT=$(cat prompt_template.md)
 
 # Replace __IMPORT_URL__ with the CDN URL containing the commit hash
-UPDATED_CONTENT=${TEMPLATE_CONTENT//__IMPORT_URL__/https:\/\/cdn.jsdelivr.net\/gh\/jeffreyyoung\/poe-db-prototype@${COMMIT_HASH}\/replicache.js}
+UPDATED_CONTENT=${TEMPLATE_CONTENT//__IMPORT_URL__/https:\/\/cdn.jsdelivr.net\/gh\/jeffreyyoung\/poe-db-prototype@${COMMIT_HASH}\/dist\/replicache.js}
 
 # Write the updated content to prompt.md
 echo "$UPDATED_CONTENT" > prompt.md
@@ -16,10 +16,10 @@ echo "$UPDATED_CONTENT" > prompt.md
 # Update the import URL in drawing2.html
 if [[ "$OSTYPE" == "darwin"* ]]; then
   # macOS version
-  sed -i '' "s|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@.*|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js\"|" public/drawing2.html
+  sed -i '' "s|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@.*|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/dist/replicache.js\"|" public/drawing2.html
 else
   # Linux/Unix version (no empty string needed)
-  sed -i "s|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@.*|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js\"|" public/drawing2.html
+  sed -i "s|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@.*|import { Replicache } from \"https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/dist/replicache.js\"|" public/drawing2.html
 fi
 
 
@@ -43,7 +43,7 @@ This is some example usage of the replicache library.
 <html>
 <script type="module">
 // the replicache library should be imported as a esmodule
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/replicache.js"
+import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@${COMMIT_HASH}/dist/replicache.js"
 
 const rep = new Replicache({
    spaceID: "appNameWithHardCodedNumbers", // some common spaceID's are occupied, so add some numbers to make it unique

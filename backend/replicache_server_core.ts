@@ -1,7 +1,7 @@
-import Ably from "https://esm.sh/ably";
-import { DatabaseSync } from "node:sqlite";
-
-
+type DatabaseSync = {
+    exec: any,
+    prepare: any,
+};
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "*",
@@ -12,14 +12,9 @@ type InStatement = {
     args: any[];
 } | string
 
-const db = new DatabaseSync("test.db");
-
-const ably = new Ably.Realtime("frBw7w.OhTF1A:ZQNStvW9BVmKiVwQ3ZqOtTN8T5-QaIlmkQ5a675c2iM");
 
 const KEY = "replicache"; // Use a fixed valid database identifier instead of filename
 const SCHEMA_VERSION = 3; // Increment schema version to create fresh tables
-
-const NO_OP_QUERY = `SELECT 1 WHERE 0`;
 
 type PokeResult = {
   mutationIds: number[];
@@ -104,7 +99,7 @@ function safeStringify(obj: any) {
   }
 }
 
-function batch(statements: InStatement[]) {
+function batch(db: DatabaseSync, statements: InStatement[]) {
     const results = [];
     for (const statement of statements) {
         if (typeof statement === "string") {
@@ -118,9 +113,9 @@ function batch(statements: InStatement[]) {
     return Promise.all(results) as Promise<any[]>;
 }
 
-async function ensureTablesExist() {
+async function ensureTablesExist(db: DatabaseSync) {
   try {
-    await batch([
+    await batch(db, [
       `CREATE TABLE IF NOT EXISTS ${KEY}_spaces_${SCHEMA_VERSION} (
         space TEXT PRIMARY KEY,
         last_mutation_id INTEGER NOT NULL DEFAULT 0
@@ -146,40 +141,42 @@ async function ensureTablesExist() {
       ON ${KEY}_keyvalue_${SCHEMA_VERSION} (space, mutation_id)`,
     ]);
   } catch (e) {
-    console.error("Error ensuring local mutation ids table:", e);
+    console.error("server", "Error ensuring local mutation ids table:", e);
     throw e;
   }
 }
 
-let needsToCreateTables = true;
 
-async function maybeCreateTables() {
-  if (needsToCreateTables) {
-    await ensureTablesExist();
-    needsToCreateTables = false;
-  }
-}
-export default async function server(request: Request): Promise<Response> {
+export function createServer(
+    db: DatabaseSync,
+    sendPoke: (spaceId: string, result: PokeResult) => Promise<any>,
+) {
+  let needsToCreateTables = true;
+    return async (request: Request): Promise<Response> => {
   try {
-    // Ensure tables exist before any operations
-    await maybeCreateTables();
-  } catch (setupError) {
+    if (needsToCreateTables) {
+      // Ensure tables exist before any operations
+      await ensureTablesExist(db);
+      needsToCreateTables = false;
+    }
+  } catch (error) {
+    console.error("server", "Error setting up database tables", error);
     return createErrorResponse("Failed to set up database tables", 500);
   }
 
   const url = new URL(request.url);
   const [action, space] = url.pathname.split("/").filter(Boolean);
 
-  console.log(`Received request: space=${space}, action=${action}, method=${request.method}`);
+  console.log("server", `Received request: space=${space}, action=${action}, method=${request.method}`);
 
   // Pull endpoint
   if (action === "pull") {
     try {
       const afterMutationId = Number(url.searchParams.get("afterMutationId") || "0");
-      console.log(`Pull request: space=${space}, afterMutationId=${afterMutationId}`);
+      console.log("server", `Pull request: space=${space}, afterMutationId=${afterMutationId}`);
 
       // Check if space exists
-      const [spaceQuery, keyValueQuery] = await batch([
+      const [spaceQuery, keyValueQuery] = await batch(db, [
         {
           sql: `SELECT last_mutation_id 
         FROM ${KEY}_spaces_${SCHEMA_VERSION} 
@@ -198,7 +195,7 @@ export default async function server(request: Request): Promise<Response> {
 
       // If space does not exist, return default response
       if (!spaceQuery || spaceQuery.length === 0) {
-        console.log(`Space ${space} does not exist, returning default pull response`);
+        console.log("server", `Space ${space} does not exist, returning default pull response`);
         const pullResponse: PullResponse = {
           lastMutationId: 0,
           patches: [],
@@ -210,7 +207,7 @@ export default async function server(request: Request): Promise<Response> {
       }
 
       const lastMutationId = Number(spaceQuery[0].last_mutation_id);
-      console.log(`Pull response: lastMutationId=${lastMutationId}`);
+      console.log("server", `Pull response: lastMutationId=${lastMutationId}`);
 
       const patches: Patch[] = (keyValueQuery || []).map((row) => ({
         op: "set",
@@ -227,7 +224,7 @@ export default async function server(request: Request): Promise<Response> {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     } catch (pullError) {
-      console.error("Error in pull endpoint:", pullError);
+      console.error("server", "Error in pull endpoint:", pullError);
       return createErrorResponse("Failed to process pull request", 500);
     }
   }
@@ -239,24 +236,24 @@ export default async function server(request: Request): Promise<Response> {
       try {
         body = await request.json();
       } catch (parseError) {
-        console.error("Failed to parse request body:", parseError);
+        console.error("server", "Failed to parse request body:", parseError);
         return createErrorResponse("Invalid request body", 400);
       }
 
       // Validate input
       if (!body.mutations || !Array.isArray(body.mutations)) {
-        console.warn("Invalid mutations in push request");
+        console.warn("server", "Invalid mutations in push request");
         return createErrorResponse("Invalid mutations in request", 400);
       }
 
-      console.log(`Push request: space=${space}, mutations=${body.mutations.length}`);
+      console.log("server", `Push request: space=${space}, mutations=${body.mutations.length}`);
 
       const localMutationIds = body.mutations.map((mutation) => mutation.id);
-      console.log(`Local mutation IDs: ${localMutationIds}`);
+      console.log("server", `Local mutation IDs: ${localMutationIds}`);
 
       const operations = body.operations;
 
-      const [updateLastMutationIdResult, ...results] = await batch([
+      const [updateLastMutationIdResult, ...results] = await batch(db, [
         {
           // update mutation_id
           sql: `
@@ -275,7 +272,7 @@ RETURNING last_mutation_id
         // update key values
         ...operations.map((o) => operationToInstatement(o, space)),
       ]) as [SpaceQueryResult, ...any[]];
-      console.log("update result!!!!", updateLastMutationIdResult);
+      console.log("server", "update result!!!!", updateLastMutationIdResult);
       const newMutationId = Number(updateLastMutationIdResult?.[0]?.last_mutation_id);
       const patches = operations.map((o) => operationToPatch(o, newMutationId));
 
@@ -284,22 +281,23 @@ RETURNING last_mutation_id
         localMutationIds,
         mutationIds: [newMutationId],
       };
-      const channel = ably.channels.get(space);
-      await channel.publish("poke", pokeResult);
+      console.log("server", "sending poke, mutationIds", pokeResult.mutationIds);
+      await sendPoke(space, pokeResult)
 
       // Return an empty object as per PushResponse type
       return new Response(safeStringify({}), {
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     } catch (pushError) {
-      console.error("Unexpected error in push endpoint:", pushError);
+      console.error("server", "Unexpected error in push endpoint:", pushError);
       return createErrorResponse("Unexpected error processing push request", 500);
     }
   }
 
   // Default response for unexpected actions
-  console.warn(`Unexpected action: ${action}`);
+  console.warn("server", `Unexpected action: ${action}`);
   return createErrorResponse(`Unsupported action: ${action}`, 400);
+}
 }
 
 function localMutationIdToInstatement(
@@ -342,5 +340,3 @@ function operationToPatch(operation: Operation, newMutationId: number): Patch {
     mutationId: newMutationId,
   };
 }
-
-Deno.serve(server);
