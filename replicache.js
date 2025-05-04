@@ -568,8 +568,8 @@ var Replicache = class {
       this.#spaceId = "space" + hashMutators(this.options.mutators);
     }
     this.#networkClient = this.options.networkClient || createValTownNetworkClient({
-      baseUrl: this.options.baseUrl || "https://poe-db-prototype.fly.dev"
-      // "https://poe-db-653909965599.us-central1.run.app",
+      baseUrl: this.options.baseUrl || // "https://poe-db-prototype.fly.dev"
+      "https://poe-db-653909965599.us-central1.run.app"
     });
     this.#networkClient.subscribeToPoke(
       { spaceId: this.#spaceId },
