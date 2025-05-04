@@ -6,6 +6,9 @@
 app = 'poe-db-prototype'
 primary_region = 'atl'
 
+[env]
+  SQLITE_DB_PATH = "/data/main.db"
+
 [build]
 
 [http_service]
@@ -14,9 +17,14 @@ primary_region = 'atl'
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
+  max_machines_running = 1
   processes = ['app']
 
 [[vm]]
   memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
+
+[[mounts]]
+  source = "poe_db_data"
+  destination = "/data"

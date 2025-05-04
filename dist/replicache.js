@@ -336,9 +336,10 @@ function keys(store) {
 }
 
 // replicache-utils/SubscriptionManager.ts
-function createSubscriptionManager(store, clientID) {
+function createSubscriptionManager(store, initialPullPromise, clientID) {
   const subscriptions = /* @__PURE__ */ new Map();
   async function _runQuery(queryFn) {
+    await initialPullPromise();
     const tx = createReadTransaction(createStoreSnapshot(store), clientID);
     const result = await queryFn(tx);
     return { result, tx };
@@ -406,10 +407,11 @@ var ReplicacheCore = class {
   };
   latestMutationId = 0;
   #clientId = "client" + Date.now() + Math.random().toString(36).substring(2, 15);
+  initialPullPromise = Promise.resolve();
   /**
    * each time we run a subscription, we keep track of the keys that were accessed
    */
-  #subscriptionManager = createSubscriptionManager(this.store, this.#clientId);
+  #subscriptionManager = createSubscriptionManager(this.store, () => this.initialPullPromise, this.#clientId);
   options;
   constructor(options) {
     this.options = options;
@@ -548,7 +550,6 @@ var Replicache = class {
   #networkClient;
   #spaceId;
   options;
-  #initialPullPromise;
   #_debugLocalMutationIdToStartTime = /* @__PURE__ */ new Map();
   constructor(options) {
     this.options = options;
@@ -575,13 +576,14 @@ var Replicache = class {
     if (typeof window !== "undefined") {
       this.#addToWindow();
     }
-    this.#initialPullPromise = this.#enqueuePull().catch((e) => {
+    this.#core.initialPullPromise = this.#enqueuePull().catch((e) => {
       console.error("initial promise failed", e);
     });
     this.#startPolling();
   }
-  hasCompletedInitialPull() {
-    return this.#initialPullPromise;
+  async hasCompletedInitialPull() {
+    const b = await this.#core.initialPullPromise;
+    return b;
   }
   _handlePokeResult(poke) {
     const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
@@ -722,7 +724,6 @@ var Replicache = class {
     );
   }
   async #doPush() {
-    await this.#initialPullPromise;
     this.#log("starting push", this.#core.store.pendingMutations.length);
     const notYetPushed = this.#core.store.pendingMutations.filter(
       (m) => m.status === "waiting"
