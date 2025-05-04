@@ -3,7 +3,7 @@
  */
 import { ScanArg } from "./replicache-utils/core/createReadTransaction.ts";
 import { createWriteTransaction } from "./replicache-utils/core/createWriteTransaction.ts";
-import { throttle } from "./replicache-utils/throttlePromise.ts";
+import { throttle, throttleAllowConcurrency } from "./replicache-utils/throttlePromise.ts";
 import {
   collapseMutations,
   createValTownNetworkClient,
@@ -25,7 +25,7 @@ import { isTest } from "./replicache-utils/isTest.ts";
 export class Replicache implements ReplicacheType<Record<string, any>> {
   #core: ReplicacheCore;
   #enqueuePull: ReturnType<typeof throttle<unknown>>;
-  #enqueuePush: ReturnType<typeof throttle<unknown>>;
+  #enqueuePush: ReturnType<typeof throttleAllowConcurrency<unknown>>;
   #networkClient: NetworkClient;
   #spaceId: string;
   options: {
@@ -51,7 +51,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       this.#doPull.bind(this),
       typeof options.pullDelay === "number" ? options.pullDelay : 50,
     );
-    this.#enqueuePush = throttle(
+    this.#enqueuePush = throttleAllowConcurrency(
       this.#doPush.bind(this),
       typeof options.pushDelay === "number" ? options.pushDelay : 50,
     );

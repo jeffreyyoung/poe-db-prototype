@@ -1,3 +1,18 @@
+// replicache-utils/network/Deferred.ts
+var Deferred = class {
+  promise;
+  // @ts-ignore
+  resolve;
+  // @ts-ignore
+  reject;
+  constructor() {
+    this.promise = new Promise((resolve, reject) => {
+      this.resolve = resolve;
+      this.reject = reject;
+    });
+  }
+};
+
 // replicache-utils/sleep.ts
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -23,6 +38,40 @@ function throttle(func, ms) {
     return currentPromise;
   }, {
     getCurrentPromise: () => currentPromise
+  });
+}
+function throttleAllowConcurrency(func, ms) {
+  let timeoutId = null;
+  const calls = [];
+  function flush() {
+    timeoutId = null;
+    const promises = [];
+    while (calls.length > 0) {
+      promises.push(calls.pop());
+    }
+    console.log("throttle", "Flushing", promises.length, "calls");
+    func().then((result) => {
+      for (const promise of promises) {
+        promise.resolve(result);
+      }
+    }).catch((error) => {
+      console.error("throttle", "Error in throttled function", error);
+      for (const promise of promises) {
+        promise.reject(error);
+      }
+    });
+  }
+  return Object.assign(function() {
+    console.log("throttle", "Adding call");
+    const deferred = new Deferred();
+    calls.push(deferred);
+    if (!timeoutId) {
+      console.log("throttle", "Setting timeout");
+      timeoutId = setTimeout(flush, ms);
+    }
+    return deferred.promise;
+  }, {
+    getCurrentPromise: () => calls.at(-1)?.promise ?? null
   });
 }
 
@@ -562,7 +611,7 @@ var Replicache = class {
       this.#doPull.bind(this),
       typeof options.pullDelay === "number" ? options.pullDelay : 50
     );
-    this.#enqueuePush = throttle(
+    this.#enqueuePush = throttleAllowConcurrency(
       this.#doPush.bind(this),
       typeof options.pushDelay === "number" ? options.pushDelay : 50
     );

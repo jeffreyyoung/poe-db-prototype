@@ -80,6 +80,8 @@ Deno.test("subscriptions", async () => {
 Deno.test("subscription with multiple keys", async () => {
     const rep = new Replicache({
         spaceID: "test"+Math.floor(Math.random()*9999999),
+        pushDelay: 1,
+        pullDelay: 1,
         mutators: {
             setValue: async (tx, { key, value }) => {
                 await tx.set(key, value)
@@ -104,18 +106,18 @@ Deno.test("subscription with multiple keys", async () => {
     console.log("testSubscription", testSubscription.calls.map((c) => c.args))
     assertEquals(testSubscription.calls[1].args[0], ["meow/1"])
     // called once for local mutation, and once for real result
-    assertSpyCalls(testSubscription, 3)
+    assertSpyCalls(testSubscription, 2)
 
     // @ts-ignore
     await rep.mutate.setValue({ key: "meow/2", value: "test" });
     await sleep(100)
-    assertEquals(testSubscription.calls[3].args[0], ["meow/1", "meow/2"])
-    assertSpyCalls(testSubscription, 4)
+    assertEquals(testSubscription.calls[2].args[0], ["meow/1", "meow/2"])
+    assertSpyCalls(testSubscription, 3)
 
     // @ts-ignore
     await rep.mutate.setValue({ key: "notmeow/3", value: "test" });
     await sleep(100)
-    assertSpyCalls(testSubscription, 4)
+    assertSpyCalls(testSubscription, 3)
 })
 
 

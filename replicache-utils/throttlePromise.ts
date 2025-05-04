@@ -1,6 +1,9 @@
+import { Deferred } from "./network/Deferred.ts";
 import { sleep } from "./sleep.ts";
 
-export function throttle<T>(func: () => Promise<T>, ms: number): (() => Promise<T | null>) & { getCurrentPromise: () => Promise<T> | null } {
+type ThrottledPromiseFn<T> = (() => Promise<T | null>) & { getCurrentPromise: () => Promise<T> | null }
+
+export function throttle<T>(func: () => Promise<T>, ms: number): ThrottledPromiseFn<T> {
     let currentPromise: Promise<T> | null = null;
     let throttledCount = 0;
     return Object.assign(async function () {
@@ -24,3 +27,40 @@ export function throttle<T>(func: () => Promise<T>, ms: number): (() => Promise<
         getCurrentPromise: () => currentPromise
     });
   }
+
+export function throttleAllowConcurrency<T>(func: () => Promise<T>, ms: number): ThrottledPromiseFn<T> {
+  let timeoutId: number | null = null;
+  const calls: Deferred<T>[] = [];
+  function flush() {
+    timeoutId = null;
+    const promises: Deferred<T>[] = [];
+    while (calls.length > 0) {
+      promises.push(calls.pop()!);
+    }
+    console.log("throttle", "Flushing", promises.length, "calls");
+    func().then((result) => {
+      for (const promise of promises) {
+        promise.resolve(result);  
+      }
+    }).catch((error) => {
+      console.error("throttle", "Error in throttled function", error);
+      for (const promise of promises) {
+        promise.reject(error);
+      } 
+    });
+  }
+
+  return Object.assign(function() {
+    console.log("throttle", "Adding call");
+    const deferred = new Deferred<T>();
+    calls.push(deferred);
+    if (!timeoutId) {
+      console.log("throttle", "Setting timeout");
+      timeoutId = setTimeout(flush, ms);
+    }
+
+    return deferred.promise;
+  }, {
+    getCurrentPromise: () => calls.at(-1)?.promise ?? null
+  });
+}

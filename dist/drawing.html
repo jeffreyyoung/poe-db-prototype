@@ -59,7 +59,7 @@
     </div>
 
     <script type="module">
-        import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@43e14cded4057b54d2576c3bc9480db9a76696d3/replicache.js"
+        import { Replicache } from "./replicache.js"
 
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
@@ -86,7 +86,7 @@
         });
 
         const rep = new Replicache({
-            pushDelay: 100,
+            pushDelay: 500,
             pullDelay: 100,
             mutators: {
                 addPointToStroke: async (tx, { strokeID, point, color }) => {
