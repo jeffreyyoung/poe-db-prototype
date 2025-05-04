@@ -560,11 +560,11 @@ var Replicache = class {
     this.#core = new createReplicacheCore_default(this.options);
     this.#enqueuePull = throttle(
       this.#doPull.bind(this),
-      options.pullDelay ?? 50
+      typeof options.pullDelay === "number" ? options.pullDelay : 50
     );
     this.#enqueuePush = throttle(
       this.#doPush.bind(this),
-      options.pushDelay ?? 50
+      typeof options.pushDelay === "number" ? options.pushDelay : 50
     );
     this.#spaceId = this.options.spaceID || "";
     if (!this.#spaceId) {
