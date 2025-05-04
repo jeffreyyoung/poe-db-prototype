@@ -165,6 +165,13 @@ export function createServer(
   }
 
   const url = new URL(request.url);
+  // if the path is /health, return a 200
+  if (url.pathname === "/health") {
+    return new Response("OK", {
+      headers: { "Content-Type": "text/plain", ...corsHeaders },
+    });
+  }
+
   const [action, space] = url.pathname.split("/").filter(Boolean);
 
   console.log("server", `Received request: space=${space}, action=${action}, method=${request.method}`);
