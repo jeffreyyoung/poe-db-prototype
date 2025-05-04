@@ -1,8 +1,10 @@
 {
   "tasks": {
-    "dev": "deno test --watch --ignore=replicache1_test.ts",
-    "test": "deno test --ignore=replicache1_test.ts",
-    "test:full": "deno test --allow-net",
+    "dev": "deno test --watch --ignore=replicache_e2e_test.ts",
+    "test": "deno test --ignore=replicache_e2e_test.ts",
+    "test:full": "deno test --allow-net --allow-env",
+    "docker": "docker-compose up --build",
+    "test:docker": "REPLICACHE_BASE_URL=http://localhost:8000 deno test --allow-net --allow-env",
     "backend": "deno run --allow-net --allow-read --allow-write backend/replicache_server.ts"
   },
   "imports": {

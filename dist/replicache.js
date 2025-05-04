@@ -1,35 +1,24 @@
+// replicache-utils/sleep.ts
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // replicache-utils/throttlePromise.ts
-function throttle(func, ms, trailing = false) {
-  let lastCall = 0;
-  let timeoutId = null;
+function throttle(func, ms) {
   let currentPromise = null;
-  let isThrottled = false;
+  let throttledCount = 0;
   return Object.assign(async function() {
-    const now = Date.now();
-    const timeSinceLastCall = now - lastCall;
-    if (timeSinceLastCall < ms) {
-      isThrottled = true;
-      if (trailing) {
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-        }
-        timeoutId = setTimeout(() => {
-          timeoutId = null;
-          lastCall = Date.now();
-          isThrottled = false;
-          currentPromise = func();
-          currentPromise.finally(() => {
-            currentPromise = null;
-          });
-        }, ms - timeSinceLastCall);
-      }
+    if (!currentPromise) {
+      currentPromise = func();
       return currentPromise;
     }
-    lastCall = now;
-    isThrottled = false;
-    currentPromise = func();
-    currentPromise.finally(() => {
-      currentPromise = null;
+    if (throttledCount > 0) {
+      return currentPromise;
+    }
+    throttledCount++;
+    currentPromise = currentPromise.finally(() => sleep(ms)).finally(() => {
+      throttledCount = 0;
+      return func();
     });
     return currentPromise;
   }, {
@@ -42,7 +31,7 @@ function isTest() {
   return typeof Deno !== "undefined";
 }
 
-// replicache-utils/NetworkClientValTown.ts
+// replicache-utils/network/NetworkClientValTown.ts
 import Ably from "https://esm.sh/ably";
 var pokeCount = 0;
 var pullCount = 0;
@@ -60,29 +49,35 @@ function getAbly() {
   return ably;
 }
 var createValTownNetworkClient = ({
-  spaceId,
-  onPoke,
   baseUrl = "https://jeffreyyoung-replicache_backend_fork1.web.val.run"
 }) => {
-  if (!isTest()) {
-    const ably2 = getAbly();
-    const channel = ably2.channels.get(spaceId);
-    channel.subscribe("poke", (message) => {
-      console.log("network -- poke", pokeCount++);
-      onPoke(message.data);
-    });
-  }
   return {
-    pull: async ({ spaceId: spaceId2, afterMutationId }) => {
+    subscribeToPoke: ({ spaceId }, onPoke) => {
+      const ably2 = getAbly();
+      const channel = ably2.channels.get(spaceId);
+      channel.subscribe("poke", (message) => {
+        console.log("network -- poke", pokeCount++);
+        onPoke(message.data);
+      });
+      return () => {
+        channel.unsubscribe();
+      };
+    },
+    unsubscribeFromPoke: ({ spaceId }) => {
+      const ably2 = getAbly();
+      const channel = ably2.channels.get(spaceId);
+      channel.unsubscribe();
+    },
+    pull: async ({ spaceId, afterMutationId }) => {
       console.log("network -- pull", pullCount++);
       const pullStart = Date.now();
       const response = await fetch(
-        `${baseUrl}/pull/${spaceId2}?afterMutationId=${afterMutationId}`
+        `${baseUrl}/pull/${spaceId}?afterMutationId=${afterMutationId}`
       );
       const pullEnd = Date.now();
       if (!response.ok) {
         throw new Error(
-          `Failed to pull from ${spaceId2}: ${response.statusText}`
+          `Failed to pull from ${spaceId}: ${response.statusText}`
         );
       }
       const data = await response.json();
@@ -96,16 +91,9 @@ var createValTownNetworkClient = ({
       );
       return data;
     },
-    push: async (args) => {
+    push: async (pushRequest) => {
+      const spaceId = pushRequest.spaceId;
       console.log("network -- push", pushCount++);
-      const mutations = args.mutations;
-      const pushRequest = {
-        mutations: mutations.map((m) => ({
-          ...m,
-          operations: []
-        })),
-        operations: collapseMutations(mutations).operations
-      };
       const pushStart = Date.now();
       const response = await fetch(`${baseUrl}/push/${spaceId}`, {
         method: "POST",
@@ -118,7 +106,7 @@ var createValTownNetworkClient = ({
         throw new Error(`Failed to push to ${spaceId}: ${response.statusText}`);
       }
       const data = await response.json();
-      console.log("pushed", mutations.length, "mutations in", timeInMs, "ms", ...isTest() ? [] : ["request", pushRequest, "response", data]);
+      console.log("pushed", pushRequest.mutations.length, "mutations in", timeInMs, "ms", ...isTest() ? [] : ["request", pushRequest, "response", data]);
       return data;
     }
   };
@@ -139,7 +127,7 @@ function collapseMutations(mutations) {
   return mutation;
 }
 
-// replicache-utils/createReadTransaction.ts
+// replicache-utils/core/createReadTransaction.ts
 function scanArgToObject(arg) {
   if (typeof arg === "string") {
     return { prefix: arg };
@@ -247,7 +235,7 @@ async function* mapAsyncIterator(asyncIterator, mapFn) {
   }
 }
 
-// replicache-utils/createWriteTransaction.ts
+// replicache-utils/core/createWriteTransaction.ts
 function createWriteTransaction(mapLike, clientID) {
   const tx = createReadTransaction(mapLike, clientID);
   const writeOperations = [];
@@ -410,7 +398,7 @@ function areSetsEqual(setA, setB) {
   return true;
 }
 
-// replicache-utils/createReplicacheCore.ts
+// replicache-utils/core/createReplicacheCore.ts
 var ReplicacheCore = class {
   store = {
     kv: /* @__PURE__ */ new Map(),
@@ -433,14 +421,12 @@ var ReplicacheCore = class {
     }
     const str = mutator.toString();
     const funcStr = `{ invoke: ${str} }`;
-    console.log("funcStr!!!", funcStr);
     return funcStr;
   }
   _loggerPrefix() {
     return `mutationId:${this.latestMutationId}`;
   }
   processPokeResult(pokeResult) {
-    console.log("received a poke", pokeResult.mutationIds, pokeResult);
     const maxMutationId = Math.max(...pokeResult.mutationIds);
     const minMutationId = Math.min(...pokeResult.mutationIds);
     if (minMutationId !== this.latestMutationId + 1) {
@@ -562,57 +548,65 @@ var Replicache = class {
   #networkClient;
   #spaceId;
   options;
+  #initialPullPromise;
   #_debugLocalMutationIdToStartTime = /* @__PURE__ */ new Map();
   constructor(options) {
     this.options = options;
     this.#core = new createReplicacheCore_default(this.options);
     this.#enqueuePull = throttle(
       this.#doPull.bind(this),
-      options.pullDelay ?? 50,
-      true
+      options.pullDelay ?? 50
     );
     this.#enqueuePush = throttle(
       this.#doPush.bind(this),
-      options.pushDelay ?? 50,
-      true
+      options.pushDelay ?? 50
     );
-    this.#startPolling();
-    const createNetworkClient = this.options.networkClientFactory ?? createValTownNetworkClient;
     this.#spaceId = this.options.spaceID || "";
     if (!this.#spaceId) {
       this.#spaceId = "space" + hashMutators(this.options.mutators);
     }
-    this.#networkClient = createNetworkClient({
-      spaceId: this.#spaceId,
-      baseUrl: this.options.baseUrl || "https://poe-db-653909965599.us-central1.run.app",
-      onPoke: (poke) => {
-        const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
-        if (shouldPull) {
-          this.#enqueuePull();
-        }
-        const times = [];
-        localMutationIds.forEach((id) => {
-          const startTime = this.#_debugLocalMutationIdToStartTime.get(id);
-          if (!startTime) {
-            return;
-          }
-          this.#_debugLocalMutationIdToStartTime.delete(id);
-          const endTime = Date.now();
-          const duration = endTime - startTime;
-          times.push(duration);
-        });
-        const minTime = Math.min(...times);
-        const maxTime = Math.max(...times);
-        const avgTime = times.reduce((acc, t) => acc + t, 0) / times.length;
-        if (times.length > 0) {
-          console.log(this.#core._loggerPrefix(), `MUTATION ROUND TRIP TIME:minTime: ${minTime}, maxTime: ${maxTime}, avgTime: ${avgTime}, mutations count: ${times.length}`);
-        }
-      },
-      pullDelay: options.pullDelay ?? 100,
-      pushDelay: options.pushDelay ?? 100
+    this.#networkClient = this.options.networkClient || createValTownNetworkClient({
+      baseUrl: this.options.baseUrl || "https://poe-db-653909965599.us-central1.run.app"
     });
+    this.#networkClient.subscribeToPoke(
+      { spaceId: this.#spaceId },
+      this._handlePokeResult.bind(this)
+    );
     if (typeof window !== "undefined") {
       this.#addToWindow();
+    }
+    this.#initialPullPromise = this.#enqueuePull().catch((e) => {
+      console.error("initial promise failed", e);
+    });
+    this.#startPolling();
+  }
+  hasCompletedInitialPull() {
+    return this.#initialPullPromise;
+  }
+  _handlePokeResult(poke) {
+    const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
+    if (shouldPull) {
+      this.#enqueuePull();
+    }
+    const times = [];
+    localMutationIds.forEach((id) => {
+      const startTime = this.#_debugLocalMutationIdToStartTime.get(id);
+      if (!startTime) {
+        return;
+      }
+      this.#_debugLocalMutationIdToStartTime.delete(id);
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      times.push(duration);
+    });
+    const minTime = Math.min(...times);
+    const maxTime = Math.max(...times);
+    const avgTime = times.reduce((acc, t) => acc + t, 0) / times.length;
+    if (times.length > 0) {
+      this.#log(
+        this.#core._loggerPrefix(),
+        `MUTATION ROUND TRIP TIME:minTime: ${minTime}, maxTime: ${maxTime}, avgTime: ${avgTime}, mutations count: ${times.length}`
+      );
     }
   }
   async pull() {
@@ -639,14 +633,14 @@ var Replicache = class {
   }
   async #startPolling() {
     if (typeof Deno !== "undefined") {
-      console.log("Skipping Ably subscription in test environment");
+      this.#log("Skipping Ably subscription in test environment");
       return;
     }
     while (true) {
+      await sleep2(2e4);
       await this.pull().catch((e) => {
         console.error("Error polling", e);
       });
-      await sleep(2e4);
     }
   }
   query(cb) {
@@ -664,19 +658,38 @@ var Replicache = class {
     return this.#core.subscribe(queryCb, onQueryCbChanged);
   }
   async #doPull() {
-    let pullStart = Date.now();
+    console.log("client", "doPull", this.#core.latestMutationId);
+    const pullStart = Date.now();
     try {
       const result = await this.#networkClient.pull({
         spaceId: this.#spaceId,
         afterMutationId: this.#core.latestMutationId
       });
-      let pullEnd = Date.now();
-      console.log(this.#core._loggerPrefix(), `/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches.`);
-      this.#core.processPullResult(result, this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id));
+      const pullEnd = Date.now();
+      this.#log(
+        this.#core._loggerPrefix(),
+        `/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches.`
+      );
+      this.#core.processPullResult(
+        result,
+        this.#core.store.pendingMutations.filter((m) => m.status !== "waiting").map((m) => m.mutation.id)
+      );
     } catch (e) {
-      let pullEnd = Date.now();
-      console?.error(this.#core._loggerPrefix(), `/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`);
+      const pullEnd = Date.now();
+      this.#logError(
+        this.#core._loggerPrefix(),
+        `/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`
+      );
     }
+  }
+  #log(...args) {
+    if (isTest()) {
+      return;
+    }
+    this.#log(...args);
+  }
+  #logError(...args) {
+    console.error(...args);
   }
   subscribeToScanEntries(scanArg, onChange) {
     return this.#core.observeEntries(scanArg, onChange);
@@ -697,7 +710,10 @@ var Replicache = class {
           }
           return async (args) => {
             const localMutationId = Math.floor(Math.random() * 9999999);
-            this.#_debugLocalMutationIdToStartTime.set(localMutationId, Date.now());
+            this.#_debugLocalMutationIdToStartTime.set(
+              localMutationId,
+              Date.now()
+            );
             await this.#core.mutate(mutatorName, args, localMutationId);
             this.push();
           };
@@ -706,7 +722,8 @@ var Replicache = class {
     );
   }
   async #doPush() {
-    console.log("starting push", this.#core.store.pendingMutations.length);
+    await this.#initialPullPromise;
+    this.#log("starting push", this.#core.store.pendingMutations.length);
     const notYetPushed = this.#core.store.pendingMutations.filter(
       (m) => m.status === "waiting"
     );
@@ -716,20 +733,32 @@ var Replicache = class {
     notYetPushed.forEach((m) => m.status = "pending");
     let pushStart = Date.now();
     try {
+      const mutations = notYetPushed.map((m) => m.mutation);
       await this.#networkClient.push({
-        mutations: notYetPushed.map((m) => m.mutation)
+        mutations,
+        spaceId: this.#spaceId,
+        operations: collapseMutations(mutations).operations
       });
       notYetPushed.forEach((m) => m.status = "pushed");
       let pushEnd = Date.now();
-      console.log(this.#core._loggerPrefix(), `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.length} mutations.`);
+      this.#log(
+        this.#core._loggerPrefix(),
+        `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.length} mutations.`
+      );
     } catch (e) {
       console.error("Error pushing mutations", e);
       let pushEnd = Date.now();
-      console.error(this.#core._loggerPrefix(), `/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Error: ${e}`);
+      console.error(
+        this.#core._loggerPrefix(),
+        `/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Error: ${e}`
+      );
       this.#core.store.pendingMutations = this.#core.store.pendingMutations.filter(
         (m) => !notYetPushed.includes(m)
       );
     }
+  }
+  destroy() {
+    this.#networkClient.unsubscribeFromPoke({ spaceId: this.#spaceId });
   }
   onChange(cb) {
     return this.subscribeToScanEntries({ prefix: "" }, (result, changes) => {
@@ -741,7 +770,7 @@ var Replicache = class {
     });
   }
 };
-function sleep(ms) {
+function sleep2(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 export {

@@ -141,42 +141,39 @@ async function ensureTablesExist(db: DatabaseSync) {
       ON ${KEY}_keyvalue_${SCHEMA_VERSION} (space, mutation_id)`,
     ]);
   } catch (e) {
-    console.error("Error ensuring local mutation ids table:", e);
+    console.error("server", "Error ensuring local mutation ids table:", e);
     throw e;
   }
 }
 
-let needsToCreateTables = true;
-
-async function maybeCreateTables(db: DatabaseSync) {
-  if (needsToCreateTables) {
-    await ensureTablesExist(db);
-    needsToCreateTables = false;
-  }
-}
 
 export function createServer(
     db: DatabaseSync,
     sendPoke: (spaceId: string, result: PokeResult) => Promise<any>,
 ) {
+  let needsToCreateTables = true;
     return async (request: Request): Promise<Response> => {
   try {
-    // Ensure tables exist before any operations
-    await maybeCreateTables(db);
-  } catch (setupError) {
+    if (needsToCreateTables) {
+      // Ensure tables exist before any operations
+      await ensureTablesExist(db);
+      needsToCreateTables = false;
+    }
+  } catch (error) {
+    console.error("server", "Error setting up database tables", error);
     return createErrorResponse("Failed to set up database tables", 500);
   }
 
   const url = new URL(request.url);
   const [action, space] = url.pathname.split("/").filter(Boolean);
 
-  console.log(`Received request: space=${space}, action=${action}, method=${request.method}`);
+  console.log("server", `Received request: space=${space}, action=${action}, method=${request.method}`);
 
   // Pull endpoint
   if (action === "pull") {
     try {
       const afterMutationId = Number(url.searchParams.get("afterMutationId") || "0");
-      console.log(`Pull request: space=${space}, afterMutationId=${afterMutationId}`);
+      console.log("server", `Pull request: space=${space}, afterMutationId=${afterMutationId}`);
 
       // Check if space exists
       const [spaceQuery, keyValueQuery] = await batch(db, [
@@ -198,7 +195,7 @@ export function createServer(
 
       // If space does not exist, return default response
       if (!spaceQuery || spaceQuery.length === 0) {
-        console.log(`Space ${space} does not exist, returning default pull response`);
+        console.log("server", `Space ${space} does not exist, returning default pull response`);
         const pullResponse: PullResponse = {
           lastMutationId: 0,
           patches: [],
@@ -210,7 +207,7 @@ export function createServer(
       }
 
       const lastMutationId = Number(spaceQuery[0].last_mutation_id);
-      console.log(`Pull response: lastMutationId=${lastMutationId}`);
+      console.log("server", `Pull response: lastMutationId=${lastMutationId}`);
 
       const patches: Patch[] = (keyValueQuery || []).map((row) => ({
         op: "set",
@@ -227,7 +224,7 @@ export function createServer(
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     } catch (pullError) {
-      console.error("Error in pull endpoint:", pullError);
+      console.error("server", "Error in pull endpoint:", pullError);
       return createErrorResponse("Failed to process pull request", 500);
     }
   }
@@ -239,20 +236,20 @@ export function createServer(
       try {
         body = await request.json();
       } catch (parseError) {
-        console.error("Failed to parse request body:", parseError);
+        console.error("server", "Failed to parse request body:", parseError);
         return createErrorResponse("Invalid request body", 400);
       }
 
       // Validate input
       if (!body.mutations || !Array.isArray(body.mutations)) {
-        console.warn("Invalid mutations in push request");
+        console.warn("server", "Invalid mutations in push request");
         return createErrorResponse("Invalid mutations in request", 400);
       }
 
-      console.log(`Push request: space=${space}, mutations=${body.mutations.length}`);
+      console.log("server", `Push request: space=${space}, mutations=${body.mutations.length}`);
 
       const localMutationIds = body.mutations.map((mutation) => mutation.id);
-      console.log(`Local mutation IDs: ${localMutationIds}`);
+      console.log("server", `Local mutation IDs: ${localMutationIds}`);
 
       const operations = body.operations;
 
@@ -275,7 +272,7 @@ RETURNING last_mutation_id
         // update key values
         ...operations.map((o) => operationToInstatement(o, space)),
       ]) as [SpaceQueryResult, ...any[]];
-      console.log("update result!!!!", updateLastMutationIdResult);
+      console.log("server", "update result!!!!", updateLastMutationIdResult);
       const newMutationId = Number(updateLastMutationIdResult?.[0]?.last_mutation_id);
       const patches = operations.map((o) => operationToPatch(o, newMutationId));
 
@@ -284,6 +281,7 @@ RETURNING last_mutation_id
         localMutationIds,
         mutationIds: [newMutationId],
       };
+      console.log("server", "sending poke, mutationIds", pokeResult.mutationIds);
       await sendPoke(space, pokeResult)
 
       // Return an empty object as per PushResponse type
@@ -291,13 +289,13 @@ RETURNING last_mutation_id
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     } catch (pushError) {
-      console.error("Unexpected error in push endpoint:", pushError);
+      console.error("server", "Unexpected error in push endpoint:", pushError);
       return createErrorResponse("Unexpected error processing push request", 500);
     }
   }
 
   // Default response for unexpected actions
-  console.warn(`Unexpected action: ${action}`);
+  console.warn("server", `Unexpected action: ${action}`);
   return createErrorResponse(`Unsupported action: ${action}`, 400);
 }
 }

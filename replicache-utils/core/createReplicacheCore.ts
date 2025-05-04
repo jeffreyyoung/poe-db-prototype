@@ -60,7 +60,6 @@ export class ReplicacheCore {
 
 
 
-    console.log("funcStr!!!", funcStr)
     return funcStr;
   }
 
@@ -69,7 +68,6 @@ export class ReplicacheCore {
   }
 
   processPokeResult(pokeResult: PokeResult): { shouldPull: boolean, localMutationIds: number[] } {
-    console.log("received a poke", pokeResult.mutationIds, pokeResult);
     const maxMutationId = Math.max(...pokeResult.mutationIds);
     const minMutationId = Math.min(...pokeResult.mutationIds);
 

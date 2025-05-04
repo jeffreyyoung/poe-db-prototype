@@ -4,13 +4,24 @@
 import { ScanArg } from "./replicache-utils/core/createReadTransaction.ts";
 import { createWriteTransaction } from "./replicache-utils/core/createWriteTransaction.ts";
 import { throttle } from "./replicache-utils/throttlePromise.ts";
-import { collapseMutations, createValTownNetworkClient } from "./replicache-utils/network/NetworkClientValTown.ts";
-import { NetworkClient, NetworkClientFactory } from "./replicache-utils/network/NetworkClient.ts";
+import {
+  collapseMutations,
+  createValTownNetworkClient,
+} from "./replicache-utils/network/NetworkClientValTown.ts";
+import {
+  NetworkClient,
+  NetworkClientFactory,
+} from "./replicache-utils/network/NetworkClient.ts";
 import ReplicacheCore from "./replicache-utils/core/createReplicacheCore.ts";
 import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
 import { ChangeSummary } from "./replicache-utils/replicache-types.ts";
-import type { ReadTransaction, Replicache as ReplicacheType } from "./replicache-utils/replicache-types.ts";
+import type {
+  ReadTransaction,
+  Replicache as ReplicacheType,
+} from "./replicache-utils/replicache-types.ts";
 import { hashMutators } from "./replicache-utils/hash.ts";
+import { PokeResult } from "./replicache-utils/server-types.ts";
+import { isTest } from "./replicache-utils/isTest.ts";
 
 export class Replicache implements ReplicacheType<Record<string, any>> {
   #core: ReplicacheCore;
@@ -29,9 +40,11 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     >;
     pushDelay?: number;
     pullDelay?: number;
-    networkClientFactory?: NetworkClientFactory;
+    networkClient?: NetworkClient;
     baseUrl?: string;
   };
+
+  #initialPullPromise: Promise<unknown>;
   #_debugLocalMutationIdToStartTime = new Map<number, number>();
   constructor(options: typeof Replicache.prototype.options) {
     this.options = options;
@@ -39,68 +52,84 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     this.#enqueuePull = throttle(
       this.#doPull.bind(this),
       options.pullDelay ?? 50,
-      true
     );
     this.#enqueuePush = throttle(
       this.#doPush.bind(this),
       options.pushDelay ?? 50,
-      true
     );
-    this.#startPolling();
-    const createNetworkClient = this.options.networkClientFactory ?? createValTownNetworkClient;
     this.#spaceId = this.options.spaceID || "";
     if (!this.#spaceId) {
-      this.#spaceId = 'space'+hashMutators(this.options.mutators);
+      this.#spaceId = "space" + hashMutators(this.options.mutators);
     }
 
-    this.#networkClient = createNetworkClient({
-      spaceId: this.#spaceId,
-      baseUrl: this.options.baseUrl || "https://poe-db-653909965599.us-central1.run.app",
-      onPoke: (poke) => {
-        const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
-        if (shouldPull) {
-          this.#enqueuePull();
-        }
-        const times: number[] = [];
-        localMutationIds.forEach(id => {
-          const startTime = this.#_debugLocalMutationIdToStartTime.get(id);
-          if (!startTime) {
-            return;
-          }
-          this.#_debugLocalMutationIdToStartTime.delete(id);
-          const endTime = Date.now();
-          const duration = endTime - startTime;
-          times.push(duration);
-        });
-
-        const minTime = Math.min(...times);
-        const maxTime = Math.max(...times);
-        const avgTime = times.reduce((acc, t) => acc + t, 0) / times.length;
-        if (times.length > 0) {
-          console.log(this.#core._loggerPrefix(), `MUTATION ROUND TRIP TIME:minTime: ${minTime}, maxTime: ${maxTime}, avgTime: ${avgTime}, mutations count: ${times.length}`);
-        }
-      },
-      pullDelay: options.pullDelay ?? 100,
-      pushDelay: options.pushDelay ?? 100,
-    });
+    this.#networkClient =
+      this.options.networkClient ||
+      createValTownNetworkClient({
+        baseUrl:
+          this.options.baseUrl ||
+          "https://poe-db-653909965599.us-central1.run.app",
+      });
+    this.#networkClient.subscribeToPoke(
+      { spaceId: this.#spaceId },
+      this._handlePokeResult.bind(this)
+    );
     if (typeof window !== "undefined") {
       this.#addToWindow();
+    }
+    this.#initialPullPromise = this.#enqueuePull().catch((e) => {
+      console.error("initial promise failed", e)
+    });
+    this.#startPolling();
+
+  }
+
+  hasCompletedInitialPull() {
+    return this.#initialPullPromise;
+  }
+
+
+
+  _handlePokeResult(poke: PokeResult) {
+    const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
+    if (shouldPull) {
+      this.#enqueuePull();
+    }
+    const times: number[] = [];
+    localMutationIds.forEach((id) => {
+      const startTime = this.#_debugLocalMutationIdToStartTime.get(id);
+      if (!startTime) {
+        return;
+      }
+      this.#_debugLocalMutationIdToStartTime.delete(id);
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      times.push(duration);
+    });
+
+    const minTime = Math.min(...times);
+    const maxTime = Math.max(...times);
+    const avgTime = times.reduce((acc, t) => acc + t, 0) / times.length;
+    if (times.length > 0) {
+      this.#log(
+        this.#core._loggerPrefix(),
+        `MUTATION ROUND TRIP TIME:minTime: ${minTime}, maxTime: ${maxTime}, avgTime: ${avgTime}, mutations count: ${times.length}`
+      );
     }
   }
 
   async pull() {
-    await this.#enqueuePush.getCurrentPromise()?.catch(() => {})
-    return await this.#enqueuePull()
+    await this.#enqueuePush.getCurrentPromise()?.catch(() => {});
+    return await this.#enqueuePull();
   }
 
   debug(): { lastMutationId: number } {
     return {
       lastMutationId: this.#core.latestMutationId,
-    }
+    };
   }
 
   push() {
-    return this.#enqueuePush()
+    return this.#enqueuePush();
   }
 
   #addToWindow() {
@@ -118,29 +147,23 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
 
   async #startPolling() {
     if (typeof Deno !== "undefined") {
-      console.log("Skipping Ably subscription in test environment");
+      this.#log("Skipping Ably subscription in test environment");
       return;
     }
     while (true) {
+      await sleep(20_000);
       await this.pull().catch((e) => {
         console.error("Error polling", e);
       });
-      await sleep(20_000);
     }
   }
 
-  query(
-    cb: (
-      tx: ReadTransaction
-    ) => Promise<any>
-  ) {
+  query(cb: (tx: ReadTransaction) => Promise<any>) {
     return this.#core.query(cb);
   }
 
   subscribe(
-    queryCb: (
-      tx: ReadTransaction
-    ) => Promise<any>,
+    queryCb: (tx: ReadTransaction) => Promise<any>,
     onQueryCbChanged: (res: any) => void
   ) {
     if (typeof queryCb !== "function") {
@@ -154,21 +177,45 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     return this.#core.subscribe(queryCb, onQueryCbChanged);
   }
 
-
   async #doPull() {
-    let pullStart = Date.now();
+    console.log("client", "doPull", this.#core.latestMutationId)
+    const pullStart = Date.now();
     try {
-    const result = await this.#networkClient.pull({
-      spaceId: this.#spaceId,
-      afterMutationId: this.#core.latestMutationId,
-    });
-    let pullEnd = Date.now();
-    console.log(this.#core._loggerPrefix(), `/pull - success (${pullEnd - pullStart}ms) - Pulled ${result.patches.length} patches.`)
-    this.#core.processPullResult(result, this.#core.store.pendingMutations.filter(m => m.status !== "waiting").map(m => m.mutation.id));
-  } catch (e) {
-    let pullEnd = Date.now();
-    console?.error(this.#core._loggerPrefix(), `/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`)
+      const result = await this.#networkClient.pull({
+        spaceId: this.#spaceId,
+        afterMutationId: this.#core.latestMutationId,
+      });
+      const pullEnd = Date.now();
+      this.#log(
+        this.#core._loggerPrefix(),
+        `/pull - success (${pullEnd - pullStart}ms) - Pulled ${
+          result.patches.length
+        } patches.`
+      );
+      this.#core.processPullResult(
+        result,
+        this.#core.store.pendingMutations
+          .filter((m) => m.status !== "waiting")
+          .map((m) => m.mutation.id)
+      );
+    } catch (e) {
+      const pullEnd = Date.now();
+      this.#logError(
+        this.#core._loggerPrefix(),
+        `/pull - failed (${pullEnd - pullStart}ms) - Error: ${e}`
+      );
+    }
   }
+
+  #log(...args: unknown[]) {
+    if (isTest()) {
+      return;
+    }
+    this.#log(...args);
+  }
+
+  #logError(...args: unknown[]) {
+    console.error(...args);
   }
 
   subscribeToScanEntries(scanArg: ScanArg, onChange: ObservePrefixOnChange) {
@@ -193,10 +240,13 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
           }
 
           return async (args: any) => {
-            const localMutationId = Math.floor(Math.random() * 9999999)
-            this.#_debugLocalMutationIdToStartTime.set(localMutationId, Date.now());
-            await this.#core.mutate(mutatorName, args, localMutationId)
-            this.push() // push in background
+            const localMutationId = Math.floor(Math.random() * 9999999);
+            this.#_debugLocalMutationIdToStartTime.set(
+              localMutationId,
+              Date.now()
+            );
+            await this.#core.mutate(mutatorName, args, localMutationId);
+            this.push(); // push in background
           };
         },
       }
@@ -204,8 +254,9 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
   }
 
   async #doPush() {
-    console.log("starting push", this.#core.store.pendingMutations.length);
-    
+    await this.#initialPullPromise;
+    this.#log("starting push", this.#core.store.pendingMutations.length);
+
     const notYetPushed = this.#core.store.pendingMutations.filter(
       (m) => m.status === "waiting"
     );
@@ -218,30 +269,53 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       const mutations = notYetPushed.map((m) => m.mutation);
       await this.#networkClient.push({
         mutations,
+        spaceId: this.#spaceId,
         operations: collapseMutations(mutations).operations,
       });
       // now the pushed mutations are in push state
       notYetPushed.forEach((m) => (m.status = "pushed"));
       let pushEnd = Date.now();
-      console.log(this.#core._loggerPrefix(), `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${notYetPushed.length} mutations.`);
+      this.#log(
+        this.#core._loggerPrefix(),
+        `/push - success (${pushEnd - pushStart}ms) - Pushed mutations: ${
+          notYetPushed.length
+        } mutations.`
+      );
     } catch (e) {
       console.error("Error pushing mutations", e);
       // roll back the mutations since this errored...
       // in real world we would retry
       let pushEnd = Date.now();
-      console.error(this.#core._loggerPrefix(), `/push - failed (${pushEnd - pushStart}ms) - Rolling back ${notYetPushed.length} mutations. Error: ${e}`)
-      this.#core.store.pendingMutations = this.#core.store.pendingMutations.filter(
-        (m) => !notYetPushed.includes(m)
+      console.error(
+        this.#core._loggerPrefix(),
+        `/push - failed (${pushEnd - pushStart}ms) - Rolling back ${
+          notYetPushed.length
+        } mutations. Error: ${e}`
       );
+      this.#core.store.pendingMutations =
+        this.#core.store.pendingMutations.filter(
+          (m) => !notYetPushed.includes(m)
+        );
     }
   }
 
-  onChange(cb: (args: { state: Map<string, any>, changes: ChangeSummary, clientId: string }) => void) {
+
+  destroy() {
+    this.#networkClient.unsubscribeFromPoke({ spaceId: this.#spaceId });
+  }
+
+  onChange(
+    cb: (args: {
+      state: Map<string, any>;
+      changes: ChangeSummary;
+      clientId: string;
+    }) => void
+  ) {
     return this.subscribeToScanEntries({ prefix: "" }, (result, changes) => {
       cb({
         state: new Map(result),
         changes,
-        clientId: this.#core.getClientIdSync()
+        clientId: this.#core.getClientIdSync(),
       });
     });
   }
