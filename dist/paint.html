@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collaborative Paint Splash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Basic reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        /* Main container structure to ensure proper layering */
+        .app-container {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* Paint container as bottom layer */
+        .paint-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        /* Cursor layer always on top of paint */
+        .cursors-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000; /* High z-index to stay above all splatters */
+        }
+        
+        /* Cursor element styles with animations */
+        .cursor-element {
+            position: absolute;
+            transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            z-index: 1100;
+            pointer-events: none;
+            opacity: 1;
+            animation: cursor-fade-in 0.3s ease-out;
+        }
+        
+        /* Cursor dot animation */
+        .cursor-dot {
+            position: absolute;
+            transition: background-color 0.3s ease;
+            animation: cursor-pulse 2s infinite alternate;
+        }
+        
+        /* Cursor name tag animation */
+        .cursor-name {
+            transition: all 0.3s ease;
+            opacity: 0.85;
+            transform-origin: left center;
+            animation: name-slide-in 0.4s ease-out backwards;
+        }
+        
+        @keyframes cursor-fade-in {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        @keyframes cursor-fade-out {
+            from { opacity: 1; transform: scale(1); }
+            to { opacity: 0; transform: scale(0.8); }
+        }
+        
+        @keyframes cursor-pulse {
+            from { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+            to { transform: scale(1.05); box-shadow: 0 0 0 3px rgba(255, 255, 255, 0); }
+        }
+        
+        /* Dark mode version of cursor pulse */
+        .dark .cursor-dot {
+            animation: cursor-pulse-dark 2s infinite alternate;
+        }
+        
+        @keyframes cursor-pulse-dark {
+            from { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.7); }
+            to { transform: scale(1.05); box-shadow: 0 0 0 3px rgba(0, 0, 0, 0); }
+        }
+        
+        @keyframes name-slide-in {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 0.85; transform: translateX(0); }
+        }
+        
+        /* Paint splatter styles */
+        .splatter {
+            position: absolute;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+        }
+        
+        /* Main splatter style */
+        .splatter-main {
+            position: absolute;
+            top: 0;
+            left: 0;
+            border-radius: 40% 60% 60% 40% / 60% 30% 70% 40%;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            transform-origin: center;
+            animation: splatterGrow 0.4s ease-out both;
+            opacity: 0;
+        }
+        
+        /* Droplet style */
+        .splatter-droplet {
+            position: absolute;
+            box-shadow: 0 0 6px rgba(0, 0, 0, 0.15);
+            animation: dropletGrow 0.6s ease-out both;
+            opacity: 0;
+        }
+        
+        /* Small style */
+        .droplet-small {
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        }
+        
+        /* Medium style */
+        .droplet-medium {
+            border-radius: 30% 70% 70% 30% / 30% 40% 60% 70%;
+        }
+        
+        /* Large style */
+        .droplet-large {
+            border-radius: 40% 60% 30% 70% / 50% 60% 40% 50%;
+        }
+        
+        /* UI Elements - all have high z-index */
+        .controls-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            display: flex;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .controls-panel.dark {
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .user-info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 2000;
+            padding: 8px 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .user-info.dark {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .user-count {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            padding: 8px 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .user-count.dark {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Color selector horizontal row */
+        .color-selector {
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        /* Interactive color buttons */
+        .color-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .color-btn.selected {
+            transform: scale(1.15);
+            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.8), 0 0 0 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .dark .color-btn.selected {
+            box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.8), 0 0 0 6px rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Make sure the input range is interactive */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #d1d5db;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        .dark input[type="range"] {
+            background: #4b5563;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #5D5CDE;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .dark input[type="range"]::-webkit-slider-thumb {
+            border-color: #333;
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #5D5CDE;
+            cursor: pointer;
+            border: 2px solid white;
+            box-shadow: 0 0 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .dark input[type="range"]::-moz-range-thumb {
+            border-color: #333;
+        }
+        
+        /* Animations */
+        @keyframes splatterGrow {
+            0% { transform: translate(-50%, -50%) scale(0) rotate(0deg); opacity: 0; }
+            70% { transform: translate(-50%, -50%) scale(1.05) rotate(10deg); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1) rotate(5deg); opacity: 0.95; }
+        }
+        
+        @keyframes dropletGrow {
+            0% { transform: scale(0) rotate(0deg); opacity: 0; }
+            70% { transform: scale(1.08) rotate(15deg); opacity: 0.9; }
+            100% { transform: scale(1) rotate(10deg); opacity: 0.85; }
+        }
+    </style>
+</head>
+<body class="bg-white dark:bg-gray-900">
+    <!-- Paint Container (Bottom Layer) -->
+    <div id="paintContainer" class="paint-container bg-white dark:bg-gray-900"></div>
+    
+    <!-- Cursors Layer (Middle Layer) -->
+    <div id="cursorsLayer" class="cursors-layer"></div>
+    
+    <!-- User Info Panel -->
+    <div class="user-info bg-white/80 dark:bg-gray-800/80 text-gray-800 dark:text-white">
+        <div class="flex items-center gap-2">
+            <input type="text" id="username" placeholder="Your name" 
+                class="text-base bg-transparent border-b border-gray-400 dark:border-gray-600 focus:outline-none focus:border-blue-500 py-1 px-2 w-36">
+        </div>
+    </div>
+    
+    <!-- User Count -->
+    <div id="userCount" class="user-count bg-white/80 dark:bg-gray-800/80 text-gray-800 dark:text-white text-sm">
+        Connected users: 1
+    </div>
+    
+    <!-- Controls Panel -->
+    <div class="controls-panel bg-white/80 dark:bg-gray-800/80">
+        <!-- Color Picker -->
+        <div class="color-selector">
+            <button class="color-btn selected" style="background-color: #ef4444;" data-color="#ef4444"></button>
+            <button class="color-btn" style="background-color: #f97316;" data-color="#f97316"></button>
+            <button class="color-btn" style="background-color: #eab308;" data-color="#eab308"></button>
+            <button class="color-btn" style="background-color: #22c55e;" data-color="#22c55e"></button>
+            <button class="color-btn" style="background-color: #3b82f6;" data-color="#3b82f6"></button>
+            <button class="color-btn" style="background-color: #a855f7;" data-color="#a855f7"></button>
+            <button class="color-btn" style="background-color: #ec4899;" data-color="#ec4899"></button>
+            <button class="color-btn" style="background-color: #ffffff; border: 1px solid #e5e7eb;" data-color="#ffffff"></button>
+            <button class="color-btn" style="background-color: #000000;" data-color="#000000"></button>
+        </div>
+        
+        <!-- Size Slider -->
+        <div class="flex items-center gap-2 px-2 border-l border-gray-300 dark:border-gray-700">
+            <span class="text-sm text-gray-800 dark:text-white">Size</span>
+            <input type="range" id="brushSize" min="15" max="100" value="40" class="w-28">
+        </div>
+        
+        <!-- Clear Button -->
+        <button id="clearButton" class="text-sm px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors ml-2 border-l border-gray-300 dark:border-gray-700">
+            Clear
+        </button>
+    </div>
+
+    <script type="module">
+        import { Replicache } from "./replicache.js";
+
+        // Initialize Replicache
+        const rep = new Replicache({
+            pushDelay: 200,
+            pullDelay: 100,
+            mutators: {
+                // Add a splash to the canvas
+                addSplash: async (tx, { id, x, y, color, size }) => {
+                    console.log(`Mutation - addSplash: id=${id}, x=${x}, y=${y}, color=${color}, size=${size}`);
+                    await tx.set(`splashes/${id}`, { id, x, y, color, size, timestamp: Date.now() });
+                },
+                
+                // Update cursor position
+                updateCursor: async (tx, { x, y, color, name }) => {
+                    console.log(`Mutation - updateCursor: x=${x}, y=${y}, color=${color}, name=${name}, clientID=${tx.clientID}`);
+                    await tx.set(`cursors/${tx.clientID}`, { 
+                        x, 
+                        y, 
+                        clientID: tx.clientID, 
+                        color, 
+                        name: name || 'Anonymous', 
+                        updatedAt: Date.now() 
+                    });
+                },
+                
+                // Delete cursor when inactive
+                deleteCursor: async (tx, { cursorKey }) => {
+                    console.log(`Mutation - deleteCursor: cursorKey=${cursorKey}`);
+                    await tx.del(cursorKey);
+                },
+                
+                // Clear all splashes
+                clearCanvas: async (tx) => {
+                    console.log('Mutation - clearCanvas: Removing all splashes');
+                    const splashes = await tx.scan({ prefix: "splashes/" }).entries().toArray();
+                    console.log(`Mutation - clearCanvas: Found ${splashes.length} splashes to remove`);
+                    for (const [key] of splashes) {
+                        await tx.del(key);
+                    }
+                }
+            }
+        });
+
+        // DOM elements
+        const paintContainer = document.getElementById('paintContainer');
+        const cursorsLayer = document.getElementById('cursorsLayer');
+        let selectedColor = '#ef4444'; // Default red
+        let brushSize = 40; // Default size
+        let userName = `Artist_${Math.floor(Math.random() * 1000)}`;
+        let isPointerDown = false;
+        let isPainting = false; // Track if we're in painting mode
+        
+        // Z-index counter to ensure newer splats are on top
+        let zIndexCounter = 1;
+
+        // Set dark mode based on user preference
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+            document.querySelector('.controls-panel').classList.add('dark');
+            document.querySelector('.user-info').classList.add('dark');
+            document.querySelector('.user-count').classList.add('dark');
+        }
+
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+            if (event.matches) {
+                document.documentElement.classList.add('dark');
+                document.querySelector('.controls-panel').classList.add('dark');
+                document.querySelector('.user-info').classList.add('dark');
+                document.querySelector('.user-count').classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.querySelector('.controls-panel').classList.remove('dark');
+                document.querySelector('.user-info').classList.remove('dark');
+                document.querySelector('.user-count').classList.remove('dark');
+            }
+        });
+
+        // Function to slightly randomize a color
+        function randomizeColor(baseColor, amount = 15) {
+            // Convert hex to RGB
+            let r, g, b;
+            
+            if (baseColor.startsWith('#')) {
+                const hex = baseColor.slice(1);
+                r = parseInt(hex.substring(0, 2), 16);
+                g = parseInt(hex.substring(2, 4), 16);
+                b = parseInt(hex.substring(4, 6), 16);
+            } else if (baseColor.startsWith('rgb')) {
+                const rgb = baseColor.match(/\d+/g);
+                r = parseInt(rgb[0]);
+                g = parseInt(rgb[1]);
+                b = parseInt(rgb[2]);
+            } else {
+                return baseColor;
+            }
+            
+            // Randomly adjust each color channel
+            r = Math.max(0, Math.min(255, r + (Math.random() * amount * 2 - amount)));
+            g = Math.max(0, Math.min(255, g + (Math.random() * amount * 2 - amount)));
+            b = Math.max(0, Math.min(255, b + (Math.random() * amount * 2 - amount)));
+            
+            // Convert back to hex
+            return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`;
+        }
+
+        // Adjust color brightness
+        function adjustColor(color, amount) {
+            // Convert hex to RGB
+            let r, g, b;
+            
+            if (color.startsWith('#')) {
+                const hex = color.slice(1);
+                r = parseInt(hex.substring(0, 2), 16);
+                g = parseInt(hex.substring(2, 4), 16);
+                b = parseInt(hex.substring(4, 6), 16);
+            } else if (color.startsWith('rgb')) {
+                const rgb = color.match(/\d+/g);
+                r = parseInt(rgb[0]);
+                g = parseInt(rgb[1]);
+                b = parseInt(rgb[2]);
+            } else {
+                return color;
+            }
+            
+            // Adjust brightness
+            r = Math.max(0, Math.min(255, r + amount));
+            g = Math.max(0, Math.min(255, g + amount));
+            b = Math.max(0, Math.min(255, b + amount));
+            
+            // Convert back to hex
+            return `#${Math.round(r).toString(16).padStart(2, '0')}${Math.round(g).toString(16).padStart(2, '0')}${Math.round(b).toString(16).padStart(2, '0')}`;
+        }
+
+        // Create a beautiful paint splatter with staggered animation
+        function createSplatterElement(splash) {
+            // Use timestamp for z-index ordering (newer splats on top)
+            const zIndex = Math.max(1, Math.floor(splash.timestamp / 1000)) + zIndexCounter++;
+            
+            // Main container for the splatter
+            const container = document.createElement('div');
+            container.id = `splash-${splash.id}`;
+            container.className = 'splatter';
+            container.style.left = `${splash.x}px`;
+            container.style.top = `${splash.y}px`;
+            container.style.zIndex = zIndex;
+            container.style.width = `${splash.size * 1.8}px`;
+            container.style.height = `${splash.size * 1.8}px`;
+            
+            // Slightly randomize the base color for this splatter
+            const baseColor = randomizeColor(splash.color, 10);
+            
+            // Create the main splatter blob
+            const mainSplatter = document.createElement('div');
+            mainSplatter.className = 'splatter-main';
+            mainSplatter.style.width = `${splash.size}px`;
+            mainSplatter.style.height = `${splash.size}px`;
+            mainSplatter.style.left = `${splash.size * 0.4}px`;
+            mainSplatter.style.top = `${splash.size * 0.4}px`;
+            
+            // Add a subtle gradient to the main splatter
+            const darkerColor = adjustColor(baseColor, -15);
+            mainSplatter.style.background = `radial-gradient(circle at 40% 40%, ${baseColor}, ${darkerColor})`;
+            
+            // Set animation delay for main splatter
+            mainSplatter.style.animationDelay = '0ms';
+            
+            container.appendChild(mainSplatter);
+            
+            // Add droplets around the main splatter
+            const dropletCount = Math.floor(5 + Math.random() * 6); // 5-10 droplets
+            
+            // Build all droplets first with staggered animation delays
+            const dropletContainer = document.createDocumentFragment();
+            
+            for (let i = 0; i < dropletCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = (Math.random() * 0.5 + 0.5) * splash.size * 0.8; // 50-130% of radius
+                const dropSize = splash.size * (0.15 + Math.random() * 0.25); // 15-40% of main splatter
+                
+                // Create droplet
+                const droplet = document.createElement('div');
+                
+                // Randomize droplet shapes
+                const shapes = ['droplet-small', 'droplet-medium', 'droplet-large'];
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                
+                droplet.className = `splatter-droplet ${shape}`;
+                droplet.style.width = `${dropSize}px`;
+                droplet.style.height = `${dropSize}px`;
+                
+                // Create a unique color for each droplet
+                const dropletColor = randomizeColor(baseColor, 15);
+                const dropletDarkerColor = adjustColor(dropletColor, -15);
+                
+                droplet.style.background = `radial-gradient(circle at 40% 40%, ${dropletColor}, ${dropletDarkerColor})`;
+                
+                // Position the droplet
+                droplet.style.left = `${Math.cos(angle) * distance + splash.size * 0.4}px`;
+                droplet.style.top = `${Math.sin(angle) * distance + splash.size * 0.4}px`;
+                
+                // Add a staggered delay for each droplet
+                // First the main splatter appears, then the droplets in sequence
+                const animDelay = 75 + (i * 50); // 75ms start delay, then 50ms between droplets
+                droplet.style.animationDelay = `${animDelay}ms`;
+                
+                dropletContainer.appendChild(droplet);
+            }
+            
+            // Add all droplets to the container at once
+            container.appendChild(dropletContainer);
+            
+            return container;
+        }
+
+        // Add a splash to the container - optimized to add the entire splatter at once
+        function addSplashToDom(key, splash) {
+            // Check if the splash already exists
+            const existingElement = document.getElementById(`splash-${splash.id}`);
+            if (existingElement) {
+                return; // Don't recreate existing elements
+            }
+            
+            // Create and add the complete splash element at once
+            const splashElement = createSplatterElement(splash);
+            paintContainer.appendChild(splashElement);
+        }
+
+        // Remove splash from the DOM
+        function removeSplashFromDom(key) {
+            const splashId = key.split('/')[1];
+            const element = document.getElementById(`splash-${splashId}`);
+            if (element) {
+                element.remove();
+            }
+        }
+
+        // Create cursor element with animation classes
+        function createCursorElement(cursor) {
+            const cursorEl = document.createElement('div');
+            cursorEl.id = `cursor-${cursor.clientID}`;
+            cursorEl.className = 'cursor-element';
+            cursorEl.innerHTML = `
+                <div class="relative">
+                    <div class="absolute -top-1 -left-1 w-5 h-5 rounded-full border-2 border-white dark:border-gray-800 shadow-md cursor-dot" 
+                         style="background-color: ${cursor.color}"></div>
+                    <div class="absolute -top-7 left-3 bg-gray-800 dark:bg-gray-100 text-white dark:text-gray-800 px-2 py-1 text-xs rounded whitespace-nowrap shadow-md cursor-name">
+                        ${cursor.name}
+                    </div>
+                </div>
+            `;
+            cursorEl.style.transform = `translate(${cursor.x}px, ${cursor.y}px)`;
+            
+            // Set animation delay to create a natural staggered effect for cursor appearance
+            const cursorDot = cursorEl.querySelector('.cursor-dot');
+            const nameTag = cursorEl.querySelector('.cursor-name');
+            
+            if (cursorDot && nameTag) {
+                nameTag.style.animationDelay = '150ms';
+            }
+            
+            return cursorEl;
+        }
+
+        // Update cursor position
+        function updateCursorElement(key, cursor) {
+            const cursorEl = document.getElementById(`cursor-${cursor.clientID}`);
+            if (cursorEl) {
+                cursorEl.style.transform = `translate(${cursor.x}px, ${cursor.y}px)`;
+                
+                // Update name if changed
+                const nameEl = cursorEl.querySelector('div > div:nth-child(2)');
+                if (nameEl && nameEl.textContent.trim() !== cursor.name) {
+                    nameEl.textContent = cursor.name;
+                }
+                
+                // Update color if changed
+                const colorEl = cursorEl.querySelector('div > div:first-child');
+                if (colorEl && colorEl.style.backgroundColor !== cursor.color) {
+                    colorEl.style.backgroundColor = cursor.color;
+                }
+            } else {
+                const newCursorEl = createCursorElement(cursor);
+                cursorsLayer.appendChild(newCursorEl);
+            }
+        }
+
+        // Remove cursor with a fade-out animation
+        function removeCursorElement(key) {
+            const cursorId = key.split('/')[1];
+            const cursorEl = document.getElementById(`cursor-${cursorId}`);
+            if (cursorEl) {
+                // Add fade-out animation class
+                cursorEl.style.animation = 'cursor-fade-out 0.3s ease-out forwards';
+                
+                // Remove the element after animation completes
+                setTimeout(() => {
+                    if (cursorEl.parentNode) {
+                        cursorEl.remove();
+                    }
+                }, 300);
+            }
+        }
+
+        // Subscribe to splashes - optimized to ensure proper layering
+        rep.subscribeToScanEntries("splashes/", (entries, changes) => {
+            // Add new splashes
+            for (const [key, value] of changes.added) {
+                addSplashToDom(key, value);
+            }
+            
+            // Remove deleted splashes
+            for (const [key] of changes.removed) {
+                removeSplashFromDom(key);
+            }
+        });
+
+        // Subscribe to cursors - always add to the cursors layer
+        rep.subscribeToScanEntries("cursors/", (entries, changes) => {
+            // Add new cursors
+            for (const [key, value] of changes.added) {
+                // Skip our own cursor
+                if (value.clientID === rep.clientID) continue;
+                
+                const cursorEl = createCursorElement(value);
+                cursorsLayer.appendChild(cursorEl);
+            }
+            
+            // Update changed cursors
+            for (const [key, value] of changes.changed) {
+                // Skip our own cursor
+                if (value.clientID === rep.clientID) continue;
+                
+                updateCursorElement(key, value);
+            }
+            
+            // Remove deleted cursors
+            for (const [key] of changes.removed) {
+                removeCursorElement(key);
+            }
+            
+            // Update user count (excluding our own cursor for the displayed count)
+            const otherUsers = entries.filter(entry => entry[1].clientID !== rep.clientID).length;
+            document.getElementById('userCount').textContent = `Connected users: ${otherUsers + 1}`;
+        });
+
+        // Get pointer position relative to container
+        function getPointerPosition(e) {
+            // Handle touch events
+            if (e.touches && e.touches.length > 0) {
+                return {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY
+                };
+            }
+            
+            // Handle mouse events
+            return {
+                x: e.clientX,
+                y: e.clientY
+            };
+        }
+
+        // Track last cursor update time for throttling
+        let lastCursorUpdate = 0;
+        const CURSOR_UPDATE_THROTTLE = 30; // Update at most every 30ms (about 33fps)
+        
+        // Handle document pointer movement - always update cursor position
+        document.addEventListener('pointermove', (e) => {
+            const pos = getPointerPosition(e);
+            const currentTime = Date.now();
+            
+            // Always update cursor position (with throttling)
+            if (currentTime - lastCursorUpdate > CURSOR_UPDATE_THROTTLE) {
+                console.log(`Calling updateCursor from pointermove: x=${pos.x}, y=${pos.y}`);
+                rep.mutate.updateCursor({
+                    x: pos.x,
+                    y: pos.y,
+                    color: selectedColor,
+                    name: getUserName()
+                });
+                lastCursorUpdate = currentTime;
+            }
+            
+            // Create paint splash only if we're painting and pointer is down
+            if (isPainting && isPointerDown) {
+                // Throttle splashes to prevent too many
+                if (Math.random() < 0.2) {
+                    createSplash(pos.x, pos.y);
+                }
+            }
+        });
+
+        // Handle entering the canvas - show cursors to anyone hovering
+        paintContainer.addEventListener('pointerenter', (e) => {
+            const pos = getPointerPosition(e);
+            
+            // Update cursor position immediately on entry
+            console.log(`Calling updateCursor from pointerenter: x=${pos.x}, y=${pos.y}`);
+            rep.mutate.updateCursor({
+                x: pos.x,
+                y: pos.y,
+                color: selectedColor,
+                name: getUserName()
+            });
+        });
+        
+        // Handle paint container interactions for painting
+        paintContainer.addEventListener('pointerdown', (e) => {
+            // Start painting mode
+            isPainting = true;
+            isPointerDown = true;
+            
+            const pos = getPointerPosition(e);
+            createSplash(pos.x, pos.y);
+            
+            // Update cursor position on click
+            console.log(`Calling updateCursor from pointerdown: x=${pos.x}, y=${pos.y}`);
+            rep.mutate.updateCursor({
+                x: pos.x,
+                y: pos.y,
+                color: selectedColor,
+                name: getUserName()
+            });
+            
+            e.preventDefault();
+        });
+
+        // Handle pointer up on document to ensure we catch it
+        document.addEventListener('pointerup', () => {
+            isPointerDown = false;
+            isPainting = false;
+        });
+        
+        // Handle document leave - remove cursor when leaving the window
+        document.addEventListener('pointerleave', () => {
+            isPointerDown = false;
+            isPainting = false;
+        });
+        
+        // Handle when the visibility changes (tab change, etc)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                // User returned to the tab - restore cursor
+                const pos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+                
+                // Show cursor again but at default position until user moves mouse
+                console.log(`Calling updateCursor from visibilitychange: x=${pos.x}, y=${pos.y}`);
+                rep.mutate.updateCursor({
+                    x: pos.x,
+                    y: pos.y,
+                    color: selectedColor,
+                    name: getUserName()
+                });
+            }
+        });
+
+        // Create a splash
+        function createSplash(x, y) {
+            const splashId = `${rep.clientID}-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+            const size = brushSize * (0.8 + Math.random() * 0.4); // Random size variations
+            
+            console.log(`Calling addSplash: x=${x}, y=${y}, color=${selectedColor}, size=${size}`);
+            rep.mutate.addSplash({
+                id: splashId,
+                x,
+                y,
+                color: selectedColor,
+                size
+            });
+        }
+
+        // Get user name from input or use default
+        function getUserName() {
+            const nameInput = document.getElementById('username');
+            const name = nameInput.value.trim();
+            return name || userName;
+        }
+
+        // Username input
+        const usernameInput = document.getElementById('username');
+        usernameInput.value = userName;
+        usernameInput.addEventListener('change', () => {
+            userName = usernameInput.value.trim() || userName;
+        });
+
+        // Color picker functionality
+        document.querySelectorAll('.color-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                selectedColor = button.dataset.color;
+                
+                // Update selected button highlight
+                document.querySelectorAll('.color-btn').forEach(b => {
+                    b.classList.remove('selected');
+                });
+                button.classList.add('selected');
+            });
+        });
+
+        // Brush size slider
+        const brushSizeSlider = document.getElementById('brushSize');
+        brushSizeSlider.addEventListener('input', () => {
+            brushSize = parseInt(brushSizeSlider.value, 10);
+        });
+
+        // Clear canvas button
+        document.getElementById('clearButton').addEventListener('click', () => {
+            console.log('Calling clearCanvas from button click');
+            rep.mutate.clearCanvas();
+        });
+
+        // Clean up inactive cursors periodically
+        async function removeInactiveCursors() {
+            const keysToDelete = await rep.query(async tx => {
+                const entries = await tx.scan({ prefix: "cursors/" }).entries().toArray();
+                const keysToDelete = [];
+                for (const [key, value] of entries) {
+                    // Remove cursors inactive for more than 30 seconds
+                    if (Date.now() - value.updatedAt > 30000) {
+                        keysToDelete.push(key);
+                    }
+                }
+                return keysToDelete;
+            });
+            
+            for (const cursorKey of keysToDelete) {
+                console.log(`Calling deleteCursor for inactive cursor: ${cursorKey}`);
+                await rep.mutate.deleteCursor({ cursorKey });
+            }
+        }
+
+        // Check for inactive cursors every 10 seconds
+        setInterval(removeInactiveCursors, 10000);
+    </script>
+</body>
+</html>

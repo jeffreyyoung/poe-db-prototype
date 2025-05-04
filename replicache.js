@@ -49,7 +49,6 @@ function throttleAllowConcurrency(func, ms) {
     while (calls.length > 0) {
       promises.push(calls.pop());
     }
-    console.log("throttle", "Flushing", promises.length, "calls");
     func().then((result) => {
       for (const promise of promises) {
         promise.resolve(result);
@@ -62,11 +61,9 @@ function throttleAllowConcurrency(func, ms) {
     });
   }
   return Object.assign(function() {
-    console.log("throttle", "Adding call");
     const deferred = new Deferred();
     calls.push(deferred);
     if (!timeoutId) {
-      console.log("throttle", "Setting timeout");
       timeoutId = setTimeout(flush, ms);
     }
     return deferred.promise;
