@@ -4,7 +4,7 @@
     "test": "deno test --ignore=e2e",
     "test:e2e": "deno test --allow-net --allow-env e2e",
     "test:full": "deno test --allow-net --allow-env",
-    "docker:up": "docker-compose up -d --build",
+    "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "test:docker": "deno task docker:up && REPLICACHE_BASE_URL=http://localhost:8000 deno test --allow-net --allow-env && deno task docker:down",
     "test:fly": "REPLICACHE_BASE_URL=https://poe-db-prototype.fly.dev deno test --allow-net --allow-env",
