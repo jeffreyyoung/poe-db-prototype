@@ -44,7 +44,6 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     baseUrl?: string;
   };
 
-  #initialPullPromise: Promise<unknown>;
   #_debugLocalMutationIdToStartTime = new Map<number, number>();
   constructor(options: typeof Replicache.prototype.options) {
     this.options = options;
@@ -76,15 +75,16 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     if (typeof window !== "undefined") {
       this.#addToWindow();
     }
-    this.#initialPullPromise = this.#enqueuePull().catch((e) => {
+    this.#core.initialPullPromise = this.#enqueuePull().catch((e) => {
       console.error("initial promise failed", e)
     });
     this.#startPolling();
 
   }
 
-  hasCompletedInitialPull() {
-    return this.#initialPullPromise;
+  async hasCompletedInitialPull() {
+    const b = await this.#core.initialPullPromise;
+    return b;
   }
 
 
@@ -254,7 +254,6 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
   }
 
   async #doPush() {
-    await this.#initialPullPromise;
     this.#log("starting push", this.#core.store.pendingMutations.length);
 
     const notYetPushed = this.#core.store.pendingMutations.filter(

@@ -9,13 +9,14 @@ type Subscription = {
     lastResult: any;
 }
 
-export function createSubscriptionManager(store: Store, clientID: string) {
+export function createSubscriptionManager(store: Store, initialPullPromise: () => Promise<any>, clientID: string) {
     const subscriptions = new Map<
         QueryFunction,
         Subscription
     >();
 
     async function _runQuery(queryFn: QueryFunction) {
+        await initialPullPromise();
         const tx = createReadTransaction(createStoreSnapshot(store), clientID);
         const result = await queryFn(tx);
         return { result, tx };

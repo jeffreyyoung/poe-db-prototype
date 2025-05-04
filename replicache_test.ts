@@ -1,8 +1,7 @@
 import { assertEquals } from "@std/assert/equals";
 import { assertSpyCalls, spy } from "jsr:@std/testing/mock";
 import { Replicache } from "./replicache.ts";
-import { createTestClient } from "./replicache-utils/network/TestNetworkClient.ts";
-import { createServer } from "./backend/replicache_server_core.ts";
+import { createQueuedTestClient, createTestClient } from "./replicache-utils/network/TestNetworkClient.ts";
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms))
@@ -62,7 +61,7 @@ Deno.test("subscriptions", async () => {
         networkClient: testClient
     })
     const testSubscription = spy((res) => { console.log("subscription called!!")})
-
+    await rep.hasCompletedInitialPull()
     rep.subscribe((tx) => tx.get("test"), testSubscription)
     // @ts-ignore
     await rep.mutate.setValue({ key: "test", value: "test" })
@@ -105,18 +104,18 @@ Deno.test("subscription with multiple keys", async () => {
     console.log("testSubscription", testSubscription.calls.map((c) => c.args))
     assertEquals(testSubscription.calls[1].args[0], ["meow/1"])
     // called once for local mutation, and once for real result
-    assertSpyCalls(testSubscription, 2)
+    assertSpyCalls(testSubscription, 3)
 
     // @ts-ignore
     await rep.mutate.setValue({ key: "meow/2", value: "test" });
     await sleep(100)
-    assertEquals(testSubscription.calls[2].args[0], ["meow/1", "meow/2"])
-    assertSpyCalls(testSubscription, 3)
+    assertEquals(testSubscription.calls[3].args[0], ["meow/1", "meow/2"])
+    assertSpyCalls(testSubscription, 4)
 
     // @ts-ignore
     await rep.mutate.setValue({ key: "notmeow/3", value: "test" });
     await sleep(100)
-    assertSpyCalls(testSubscription, 3)
+    assertSpyCalls(testSubscription, 4)
 })
 
 
@@ -151,3 +150,96 @@ Deno.test("mutation_ids", async () => {
 Deno.test("This one should fail because certain things are not cleaned up", () => {
     assertEquals(true, true, "yay");
 })
+
+Deno.test("subscriptions are not invoked until initial pull is complete", async () => { 
+    const testClient = createTestClient({})
+    const rep = new Replicache({
+        spaceID: "test123",
+        mutators: {
+            setValue: async (tx, { key, value }) => {
+                await tx.set(key, value)
+            }
+        },
+        networkClient: testClient
+    })
+    // @ts-ignore
+    await rep.mutate.setValue({ key: "test", value: "testResult" })
+    await rep.push();
+    await rep.pull();
+    // make a different client
+    const rep2 = new Replicache({
+        spaceID: "test123",
+        mutators: {
+            setValue: async (tx, { key, value }) => {   
+                await tx.set(key, value)
+            }
+        },
+        networkClient: testClient
+    })
+    const testSubscription = spy((res) => { console.log("subscription called!!")})
+
+    rep2.subscribe((tx) => tx.get("test"), testSubscription)
+    await sleep(100)
+    assertSpyCalls(testSubscription, 1)
+    assertEquals(testSubscription.calls[0].args[0], "testResult")
+});
+
+
+Deno.test("test subscriptions with controlled pull", async () => {
+    const [testClient, controller] = createQueuedTestClient()
+    const rep = new Replicache({
+        spaceID: "test123",
+        mutators: {
+            setValue: async (tx, { key, value }) => {
+                await tx.set(key, value)
+            }
+        },
+        networkClient: testClient
+    });
+    const testSubscription = spy((res) => { console.log("subscription called!!")})
+    rep.subscribe((tx) => tx.get("my_favorite_food"), testSubscription)
+    assertEquals(controller.queuedPulls.length, 1);
+    let isResolved = false;
+    rep.hasCompletedInitialPull().then(() => {
+        isResolved = true;
+    });
+    await sleep(100)
+    assertSpyCalls(testSubscription, 0);
+    assertEquals(isResolved, false);
+    controller.flushPulls();
+    await sleep(100)
+    assertEquals(isResolved, true);
+    assertSpyCalls(testSubscription, 1);
+
+    assertEquals(controller.queuedPulls.length, 0);
+    assertEquals(controller.queuedPushes.length, 0);
+    assertEquals(controller.queuedPokes.length, 0);
+    console.log("mutating")
+    // @ts-ignore
+    await rep.mutate.setValue({ key: "my_favorite_food", value: { food: "hot dogs" } })
+    await sleep(100)
+    console.log("mutated")
+    assertEquals(controller.queuedPushes.length, 1);
+    assertEquals(controller.queuedPokes.length, 0);
+    assertEquals(controller.queuedPulls.length, 0);
+    // subscription should be called with optimistic result
+    assertSpyCalls(testSubscription, 2);
+    assertEquals(testSubscription.calls[1].args[0], { food: "hot dogs" });
+    await controller.flushPushes();
+    await sleep(100)
+    assertEquals(controller.queuedPushes.length, 0);
+    assertEquals(controller.queuedPokes.length, 1);
+    assertEquals(controller.queuedPulls.length, 0);
+    assertSpyCalls(testSubscription, 2);
+
+    await controller.flushPokes();
+    await sleep(100)
+    assertEquals(controller.queuedPokes.length, 0);
+    assertEquals(controller.queuedPulls.length, 0);
+    assertSpyCalls(testSubscription, 3);
+    assertEquals(testSubscription.calls[2].args[0], { food: "hot dogs" });
+
+    assertEquals(controller.queuedPulls.length, 0);
+    assertEquals(controller.queuedPushes.length, 0);
+    assertEquals(controller.queuedPokes.length, 0);
+});

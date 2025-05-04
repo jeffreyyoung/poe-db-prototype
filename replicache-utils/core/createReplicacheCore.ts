@@ -20,11 +20,11 @@ export class ReplicacheCore {
 
   latestMutationId = 0;
   #clientId = "client"+Date.now() + Math.random().toString(36).substring(2, 15);
-
+  initialPullPromise: Promise<any> = Promise.resolve();
   /**
    * each time we run a subscription, we keep track of the keys that were accessed
    */
-  #subscriptionManager = createSubscriptionManager(this.store, this.#clientId);
+  #subscriptionManager = createSubscriptionManager(this.store, () => this.initialPullPromise, this.#clientId);
   options: {
     mutators: Record<
       string,

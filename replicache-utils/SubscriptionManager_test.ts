@@ -7,7 +7,7 @@ import { sleep } from "./sleep.ts";
 Deno.test("test subscriptions basic", async () => {
     const store = createStore();
     const onChangeSpy = spy(() => {})
-    const subscriptionManager = createSubscriptionManager(store, "client1");
+    const subscriptionManager = createSubscriptionManager(store, () => Promise.resolve(), "client1");
 
     subscriptionManager.subscribe(async (tx) => {
         const totalKeys = await tx.scan({ prefix: "" }).keys().toArray();
@@ -37,7 +37,7 @@ Deno.test("test subscriptions basic", async () => {
 
 Deno.test("test scanned keys in subscription", async () => {
     const store = createStore();
-    const subscriptionManager = createSubscriptionManager(store, "client1");
+    const subscriptionManager = createSubscriptionManager(store, () => Promise.resolve(), "client1");
     const onChangeSpy = spy(() => {})
     subscriptionManager.subscribe(async (tx) => {
         return tx.scan({ prefix: "todos/" }).keys().toArray();
@@ -82,7 +82,7 @@ Deno.test("test scanned keys in subscription", async () => {
 
 Deno.test("values changed in prefix", async () => {
     const store = createStore();
-    const subscriptionManager = createSubscriptionManager(store, "client1");
+    const subscriptionManager = createSubscriptionManager(store, () => Promise.resolve(), "client1");
     const onChangeSpy = spy(() => {})
     subscriptionManager.subscribe(async (tx) => {
         return tx.scan({ prefix: "todos/" }).values().toArray();

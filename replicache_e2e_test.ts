@@ -64,6 +64,7 @@ Deno.test("subscriptions", e2eOps, async () => {
             }
         },
     })
+    await rep.hasCompletedInitialPull();
     const testSubscription = spy((res) => { console.log("subscription called!!")})
 
     rep.subscribe((tx) => tx.get("test"), testSubscription)
@@ -77,8 +78,8 @@ Deno.test("subscriptions", e2eOps, async () => {
     await rep.mutate.setValue({ key: "test1", value: "test" })
     await rep.push()
     await rep.pull()
-    await sleep(500)
-    assertSpyCalls(testSubscription, 2)
+    await sleep(0)
+    assertSpyCalls(testSubscription, 1)
 })
 
 Deno.test("subscription with multiple keys", e2eOps, async () => {
@@ -97,6 +98,7 @@ Deno.test("subscription with multiple keys", e2eOps, async () => {
         const keys = await tx.scan({ prefix: "meow/" }).values().toArray();
         return keys
     }, testSubscription);
+    await rep.hasCompletedInitialPull();
     await sleep(100)
     assertSpyCalls(testSubscription, 1)
 
