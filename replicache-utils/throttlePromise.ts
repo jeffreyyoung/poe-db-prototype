@@ -14,7 +14,7 @@ export function throttle<T>(func: () => Promise<T>, ms: number): (() => Promise<
       }
 
       throttledCount++;
-      currentPromise = currentPromise.finally(() => sleep(ms)).finally(() => {
+      currentPromise = currentPromise.finally(() => sleep(ms)).then(() => {
         throttledCount = 0;
         return func();
       });

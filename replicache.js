@@ -16,7 +16,7 @@ function throttle(func, ms) {
       return currentPromise;
     }
     throttledCount++;
-    currentPromise = currentPromise.finally(() => sleep(ms)).finally(() => {
+    currentPromise = currentPromise.finally(() => sleep(ms)).then(() => {
       throttledCount = 0;
       return func();
     });
