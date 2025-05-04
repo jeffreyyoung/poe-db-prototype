@@ -1,7 +1,8 @@
 set -e
-
+# run tests
 deno task test
 
+# run docker container and tests
 deno task docker:up
 deno task test:docker
 deno task docker:down
