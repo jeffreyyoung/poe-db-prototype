@@ -4,7 +4,7 @@
 #
 
 app = 'poe-db-prototype'
-primary_region = 'atl'
+primary_region = 'sjc'
 
 [env]
   SQLITE_DB_PATH = "/data/main.db"
