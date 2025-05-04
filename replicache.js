@@ -32,7 +32,7 @@ function isTest() {
 }
 
 // replicache-utils/network/NetworkClientValTown.ts
-import Ably from "https://esm.sh/ably";
+import Ably from "https://esm.sh/ably@2.7.0";
 var pokeCount = 0;
 var pullCount = 0;
 var pushCount = 0;
@@ -491,6 +491,7 @@ var ReplicacheCore = class {
     return result;
   }
   async query(cb) {
+    await this.initialPullPromise;
     const tx = createReadTransaction(createStoreSnapshot(this.store), this.#clientId);
     const result = await cb(tx);
     return result;
@@ -688,7 +689,7 @@ var Replicache = class {
     if (isTest()) {
       return;
     }
-    this.#log(...args);
+    console.log(...args);
   }
   #logError(...args) {
     console.error(...args);
@@ -711,6 +712,7 @@ var Replicache = class {
             throw new Error(`Mutator not found: ${mutatorName}`);
           }
           return async (args) => {
+            await this.#core.initialPullPromise;
             const localMutationId = Math.floor(Math.random() * 9999999);
             this.#_debugLocalMutationIdToStartTime.set(
               localMutationId,

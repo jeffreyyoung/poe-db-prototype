@@ -58,7 +58,7 @@ function isTest() {
 }
 
 // replicache-utils/NetworkClientValTown.ts
-import Ably from "https://esm.sh/ably";
+import Ably from "https://esm.sh/ably@2.7.0";
 var pokeCount = 0;
 var pullCount = 0;
 var pushCount = 0;

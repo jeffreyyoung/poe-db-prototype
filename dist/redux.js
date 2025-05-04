@@ -1,5 +1,5 @@
 // redux.ts
-import Ably from "https://esm.sh/ably";
+import Ably from "https://esm.sh/ably@2.7.0";
 
 // replicache-utils/hash.ts
 function simpleHash(str) {

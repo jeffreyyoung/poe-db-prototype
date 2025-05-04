@@ -145,6 +145,7 @@ export class ReplicacheCore {
   async query(
     cb: (tx: ReturnType<typeof createReadTransaction>) => Promise<any>
   ) {
+    await this.initialPullPromise;
     const tx = createReadTransaction(createStoreSnapshot(this.store), this.#clientId);
     const result = await cb(tx);
     return result;

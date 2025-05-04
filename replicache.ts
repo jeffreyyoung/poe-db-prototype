@@ -10,7 +10,6 @@ import {
 } from "./replicache-utils/network/NetworkClientValTown.ts";
 import {
   NetworkClient,
-  NetworkClientFactory,
 } from "./replicache-utils/network/NetworkClient.ts";
 import ReplicacheCore from "./replicache-utils/core/createReplicacheCore.ts";
 import { ObservePrefixOnChange } from "./replicache-utils/observePrefix.ts";
@@ -211,7 +210,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     if (isTest()) {
       return;
     }
-    this.#log(...args);
+    console.log(...args);
   }
 
   #logError(...args: unknown[]) {
@@ -240,6 +239,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
           }
 
           return async (args: any) => {
+            await this.#core.initialPullPromise;
             const localMutationId = Math.floor(Math.random() * 9999999);
             this.#_debugLocalMutationIdToStartTime.set(
               localMutationId,

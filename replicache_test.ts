@@ -243,3 +243,53 @@ Deno.test("test subscriptions with controlled pull", async () => {
     assertEquals(controller.queuedPushes.length, 0);
     assertEquals(controller.queuedPokes.length, 0);
 });
+
+
+Deno.test("query shouldn't resolve until pull is complete", async () => {
+    const [testClient, controller] = createQueuedTestClient()
+    const rep = new Replicache({
+        spaceID: "test123",
+        mutators: {
+            setValue: async (tx, { key, value }) => {
+                await tx.set(key, value)
+            }
+        },
+        networkClient: testClient
+    });
+    const testSubscription = spy((res) => { console.log("subscription called!!")})
+    rep.subscribe((tx) => tx.get("my_favorite_food"), testSubscription)
+    assertEquals(controller.queuedPulls.length, 1);
+    let isResolved = false;
+    rep.query((tx) => tx.get("my_favorite_food")).then(() => {
+        isResolved = true;
+    });
+    await sleep(100)
+    assertEquals(isResolved, false);
+    controller.flushPulls();
+    await sleep(100)
+    assertEquals(isResolved, true);
+});
+
+Deno.test("query should resolve with initial pull result", async () => {
+    const client = createTestClient({})
+    const createRep = () => {
+        return new Replicache({
+            spaceID: "test123",
+            mutators: {
+                setValue: async (tx, { key, value }) => {
+                    await tx.set(key, value)
+                }
+            },
+            networkClient: client
+        })
+    }
+    const rep1 = createRep()
+    // @ts-ignore
+    await rep1.mutate.setValue({ key: "my_favorite_food", value: { food: "hot dogs" } })
+    await rep1.push()
+    await sleep(10);
+    const rep2 = createRep()
+    await rep2.pull()
+
+    assertEquals(await rep2.query((tx) => tx.get("my_favorite_food")), { food: "hot dogs" });
+})

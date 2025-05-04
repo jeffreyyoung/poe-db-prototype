@@ -1,6 +1,6 @@
 import { assertEquals } from "@std/assert/equals";
 import { assertSpyCalls, spy } from "jsr:@std/testing/mock";
-import { Replicache } from "./replicache.ts";
+import { Replicache } from "../replicache.ts";
 
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms))
@@ -79,7 +79,7 @@ Deno.test("subscriptions", e2eOps, async () => {
     await rep.push()
     await rep.pull()
     await sleep(0)
-    assertSpyCalls(testSubscription, 1)
+    assertSpyCalls(testSubscription, 2)
 })
 
 Deno.test("subscription with multiple keys", e2eOps, async () => {
