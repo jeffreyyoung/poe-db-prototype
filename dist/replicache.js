@@ -491,9 +491,12 @@ var ReplicacheCore = class {
     return result;
   }
   async query(cb) {
+    const start = Date.now();
     await this.initialPullPromise;
     const tx = createReadTransaction(createStoreSnapshot(this.store), this.#clientId);
     const result = await cb(tx);
+    const end = Date.now();
+    console.log("client query", `took ${end - start}ms`);
     return result;
   }
   subscribe(queryCb, onQueryCbChanged) {
