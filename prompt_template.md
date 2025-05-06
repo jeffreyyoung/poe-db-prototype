@@ -453,7 +453,7 @@ Guidelines for using replicache
 - Never access global variables inside a mutator
 - Use rep.subscribe or rep.subscribeToScanEntries to subscribe to changes and update the DOM
 - Use the entry `key` to identify existing dom nodes.  Always update the existing DOM nodes if one exists.  If not create a new dom node.
-
+- Always show a loading screen while we wait for hasCompletedInitialPull to resolve
 
 Replicache typescript types
 
@@ -511,6 +511,8 @@ export declare class Replicache<Mutators extends Record<string, (tx: WriteTransa
     mutate: {
         [K in keyof Mutators]: (args: Parameters<Mutators[K]>[1]) => Promise<ReturnType<Mutators[K]>>
     }
+    // always show a loading screen until this promise resolves
+    hasCompletedInitialPull: () => Promise<any>
 }
 ```
 
