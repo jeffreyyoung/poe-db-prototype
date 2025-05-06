@@ -453,7 +453,6 @@ Guidelines for using replicache
 - Never access global variables inside a mutator
 - Use rep.subscribe or rep.subscribeToScanEntries to subscribe to changes and update the DOM
 - Use the entry `key` to identify existing dom nodes.  Always update the existing DOM nodes if one exists.  If not create a new dom node.
-- Show a loading state until `rep.hasCompletedInitialPull(): Promise<any>` has resolved
 
 
 Replicache typescript types
