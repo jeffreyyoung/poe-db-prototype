@@ -7,8 +7,8 @@ COMMIT_HASH=$(git rev-parse HEAD)
 TEMPLATE_CONTENT=$(cat prompt_template.md)
 
 # Replace __IMPORT_URL__ with the CDN URL containing the commit hash
-UPDATED_CONTENT=${TEMPLATE_CONTENT//__IMPORT_URL__/https:\/\/cdn.jsdelivr.net\/gh\/jeffreyyoung\/poe-db-prototype@${COMMIT_HASH}\/dist\/replicache.js}
-
+# UPDATED_CONTENT=${TEMPLATE_CONTENT//__IMPORT_URL__/https:\/\/cdn.jsdelivr.net\/gh\/jeffreyyoung\/poe-db-prototype@${COMMIT_HASH}\/dist\/replicache.js}
+UPDATED_CONTENT=${TEMPLATE_CONTENT//__IMPORT_URL__/https:\/\/replicache-client-fork.val.run\/v1}
 # Write the updated content to prompt.md
 echo "$UPDATED_CONTENT" > prompt.md
 

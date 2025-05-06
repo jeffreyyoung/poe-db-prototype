@@ -453,6 +453,7 @@ Guidelines for using replicache
 - Never access global variables inside a mutator
 - Use rep.subscribe or rep.subscribeToScanEntries to subscribe to changes and update the DOM
 - Use the entry `key` to identify existing dom nodes.  Always update the existing DOM nodes if one exists.  If not create a new dom node.
+- Show a loading state until `rep.hasCompletedInitialPull(): Promise<any>` has resolved
 
 
 Replicache typescript types
@@ -518,7 +519,7 @@ export declare class Replicache<Mutators extends Record<string, (tx: WriteTransa
 Examples
 
 <example_todo_app_logic>
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@168d0454edebe339061f7a9aa3a66e2efcf0e59a/dist/replicache.js"
+import { Replicache } from "https://replicache-client-fork.val.run/v1"
 
 const rep = new Replicache({
    pushDelay: 100,
@@ -564,7 +565,7 @@ rep.subscribeToScanEntries("todos/", (entries, changes) => {
 </example_todo_app_logic>
 
 <example_painting_app_logic>
-import { Replicache } from "https://cdn.jsdelivr.net/gh/jeffreyyoung/poe-db-prototype@168d0454edebe339061f7a9aa3a66e2efcf0e59a/dist/replicache.js"
+import { Replicache } from "https://replicache-client-fork.val.run/v1"
 
 const rep = new Replicache({
    pushDelay: 100,

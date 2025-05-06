@@ -1,5 +1,4 @@
 import { assertEquals } from "@std/assert/equals";
-import { createValTownNetworkClient } from "../replicache-utils/network/NetworkClientValTown.ts";
 import { Replicache } from "../replicache.ts";
 
 const e2eOps = {
