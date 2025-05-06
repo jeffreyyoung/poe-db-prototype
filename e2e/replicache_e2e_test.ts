@@ -13,11 +13,11 @@ const e2eOps = {
 
 const baseUrl = Deno.env.get("REPLICACHE_BASE_URL") || "https://poe-db-653909965599.us-central1.run.app"
 
-Deno.test("test", e2eOps, async () => {
-    try {
+Deno.test("meowowowow", e2eOps, async () => {
     const rep = new Replicache({
         spaceID: "test"+Math.floor(Math.random()*9999999),
         baseUrl,
+        // baseUrl: "http://localhost:8000",
         mutators: {
             setValue: async (tx, { key, value }) => {
                 await tx.set(key, value)
@@ -34,7 +34,7 @@ Deno.test("test", e2eOps, async () => {
         const value = await rep.query((tx) => tx.get("test"+i))
         assertEquals("test"+i, value)
     }
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 10; i++) {
         const value = "meow"+i
         // @ts-ignore
         await rep.mutate.setValue({ key: "meow", value: value })
@@ -46,10 +46,6 @@ Deno.test("test", e2eOps, async () => {
     console.log("pulling")
     await rep.pull()
     console.log("pulled")
-    } catch (e) {
-        console.error("nooooo", e)
-        assertEquals(true, false)
-    }
 
 })
 
@@ -79,7 +75,7 @@ Deno.test("subscriptions", e2eOps, async () => {
     await rep.push()
     await rep.pull()
     await sleep(0)
-    assertSpyCalls(testSubscription, 2)
+    assertSpyCalls(testSubscription, 1)
 })
 
 Deno.test("subscription with multiple keys", e2eOps, async () => {

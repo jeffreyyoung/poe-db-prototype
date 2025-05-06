@@ -25,7 +25,7 @@ import { isTest } from "./replicache-utils/isTest.ts";
 export class Replicache implements ReplicacheType<Record<string, any>> {
   #core: ReplicacheCore;
   #enqueuePull: ReturnType<typeof throttle<unknown>>;
-  #enqueuePush: ReturnType<typeof throttleAllowConcurrency<unknown>>;
+  #enqueuePush: ReturnType<typeof throttle<unknown>>;
   #networkClient: NetworkClient;
   #spaceId: string;
   options: {
@@ -75,7 +75,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     if (typeof window !== "undefined") {
       this.#addToWindow();
     }
-    this.#core.initialPullPromise = this.#enqueuePull().catch((e) => {
+    this.#core.initialPullPromise = this.pull().catch((e) => {
       console.error("initial promise failed", e)
     });
     this.#startPolling();
@@ -92,7 +92,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
   _handlePokeResult(poke: PokeResult) {
     const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
     if (shouldPull) {
-      this.#enqueuePull();
+      this.pull();
     }
     const times: number[] = [];
     localMutationIds.forEach((id) => {
@@ -118,7 +118,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
   }
 
   async pull() {
-    await this.#enqueuePush.getCurrentPromise()?.catch(() => {});
+    await this.#enqueuePush.done();
     return await this.#enqueuePull();
   }
 
@@ -128,7 +128,8 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     };
   }
 
-  push() {
+  async push() {
+    await this.#enqueuePull.done();
     return this.#enqueuePush();
   }
 
@@ -208,7 +209,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
   }
 
   #log(...args: unknown[]) {
-    if (isTest()) {
+    if (isTest() && false) {
       return;
     }
     console.log(...args);
@@ -240,7 +241,6 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
           }
 
           return async (args: any) => {
-            await this.#core.initialPullPromise;
             const localMutationId = Math.floor(Math.random() * 9999999);
             this.#_debugLocalMutationIdToStartTime.set(
               localMutationId,
@@ -261,12 +261,14 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       (m) => m.status === "waiting"
     );
     if (notYetPushed.length === 0) {
+      console.log("no mutations to push");
       return;
     }
     notYetPushed.forEach((m) => (m.status = "pending"));
     let pushStart = Date.now();
     try {
       const mutations = notYetPushed.map((m) => m.mutation);
+      console.log("pushing", mutations.length, "mutations");
       await this.#networkClient.push({
         mutations,
         spaceId: this.#spaceId,

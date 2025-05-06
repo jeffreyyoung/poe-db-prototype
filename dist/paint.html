@@ -342,7 +342,8 @@
         const rep = new Replicache({
             pushDelay: 200,
             pullDelay: 100,
-            baseUrl: "https://poe-db-prototype.fly.dev",
+            // baseUrl: "https://poe-db-prototype.fly.dev",
+            baseUrl: "http://localhost:8000",
             mutators: {
                 // Add a splash to the canvas
                 addSplash: async (tx, { id, x, y, color, size }) => {

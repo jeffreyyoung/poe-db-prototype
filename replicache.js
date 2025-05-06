@@ -37,7 +37,7 @@ function throttle(func, ms) {
     });
     return currentPromise;
   }, {
-    getCurrentPromise: () => currentPromise
+    done: () => currentPromise ?? Promise.resolve()
   });
 }
 function throttleAllowConcurrency(func, ms) {
@@ -68,7 +68,19 @@ function throttleAllowConcurrency(func, ms) {
     }
     return deferred.promise;
   }, {
-    getCurrentPromise: () => calls.at(-1)?.promise ?? null
+    done: () => new Promise((resolve) => {
+      (async () => {
+        try {
+          while (calls.length > 0) {
+            await Promise.allSettled(calls.map((c) => c.promise));
+          }
+        } catch (error) {
+          console.error("throttle", "Error in throttled function", error);
+        } finally {
+          resolve(null);
+        }
+      })();
+    })
   });
 }
 
@@ -627,7 +639,7 @@ var Replicache = class {
     if (typeof window !== "undefined") {
       this.#addToWindow();
     }
-    this.#core.initialPullPromise = this.#enqueuePull().catch((e) => {
+    this.#core.initialPullPromise = this.pull().catch((e) => {
       console.error("initial promise failed", e);
     });
     this.#startPolling();
@@ -639,7 +651,7 @@ var Replicache = class {
   _handlePokeResult(poke) {
     const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);
     if (shouldPull) {
-      this.#enqueuePull();
+      this.pull();
     }
     const times = [];
     localMutationIds.forEach((id) => {
@@ -663,8 +675,7 @@ var Replicache = class {
     }
   }
   async pull() {
-    await this.#enqueuePush.getCurrentPromise()?.catch(() => {
-    });
+    await this.#enqueuePush.done();
     return await this.#enqueuePull();
   }
   debug() {
@@ -672,7 +683,8 @@ var Replicache = class {
       lastMutationId: this.#core.latestMutationId
     };
   }
-  push() {
+  async push() {
+    await this.#enqueuePull.done();
     return this.#enqueuePush();
   }
   #addToWindow() {
@@ -736,7 +748,7 @@ var Replicache = class {
     }
   }
   #log(...args) {
-    if (isTest()) {
+    if (isTest() && false) {
       return;
     }
     console.log(...args);
@@ -762,7 +774,6 @@ var Replicache = class {
             throw new Error(`Mutator not found: ${mutatorName}`);
           }
           return async (args) => {
-            await this.#core.initialPullPromise;
             const localMutationId = Math.floor(Math.random() * 9999999);
             this.#_debugLocalMutationIdToStartTime.set(
               localMutationId,
@@ -781,12 +792,14 @@ var Replicache = class {
       (m) => m.status === "waiting"
     );
     if (notYetPushed.length === 0) {
+      console.log("no mutations to push");
       return;
     }
     notYetPushed.forEach((m) => m.status = "pending");
     let pushStart = Date.now();
     try {
       const mutations = notYetPushed.map((m) => m.mutation);
+      console.log("pushing", mutations.length, "mutations");
       await this.#networkClient.push({
         mutations,
         spaceId: this.#spaceId,

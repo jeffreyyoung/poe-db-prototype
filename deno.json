@@ -2,13 +2,15 @@
   "tasks": {
     "dev": "deno test --watch --ignore=e2e",
     "test": "deno test --ignore=e2e",
-    "test:e2e": "deno test --allow-net --allow-env e2e",
-    "test:full": "deno test --allow-net --allow-env",
+    "test:e2e": "deno test --allow-net --no-prompt --allow-env e2e",
+    "test:full": "deno test --allow-net --no-prompt --allow-env",
     "docker:up": "docker-compose up -d",
+    "build": "sh ./_build.sh",
     "docker:down": "docker-compose down",
+
     "test:docker": "deno task docker:up && REPLICACHE_BASE_URL=http://localhost:8000 deno test --allow-net --allow-env && deno task docker:down",
     "test:fly": "REPLICACHE_BASE_URL=https://poe-db-prototype.fly.dev deno test --allow-net --allow-env",
-    "backend": "deno run --allow-net --allow-read --allow-write backend/replicache_server.ts"
+    "backend": "deno run --watch --allow-net --allow-read --allow-env --allow-write backend/replicache_server.ts"
   },
   "imports": {
     "@std/assert": "jsr:@std/assert@1",

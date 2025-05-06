@@ -1,3 +1,5 @@
+import { isTest } from "../replicache-utils/isTest.ts";
+
 type DatabaseSync = {
     exec: any,
     prepare: any,
@@ -147,6 +149,17 @@ async function ensureTablesExist(db: DatabaseSync) {
 }
 
 
+function log(level: "log" | "error", ...args: unknown[]) {
+  if (isTest() && level !== "error") {
+    return;
+  }
+  if (level === "log") {
+    console.log("server", ...args);
+  } else {
+    console.error("server", ...args);
+  }
+}
+
 export function createServer(
     db: DatabaseSync,
     sendPoke: (spaceId: string, result: PokeResult) => Promise<any>,
@@ -174,13 +187,13 @@ export function createServer(
 
   const [action, space] = url.pathname.split("/").filter(Boolean);
 
-  console.log("server", `Received request: space=${space}, action=${action}, method=${request.method}`);
+  log("log", `Received request: space=${space}, action=${action}, method=${request.method}`);
 
   // Pull endpoint
   if (action === "pull") {
     try {
       const afterMutationId = Number(url.searchParams.get("afterMutationId") || "0");
-      console.log("server", `Pull request: space=${space}, afterMutationId=${afterMutationId}`);
+      log("log", `Pull request: space=${space}, afterMutationId=${afterMutationId}`);
 
       // Check if space exists
       const [spaceQuery, keyValueQuery] = await batch(db, [
@@ -202,7 +215,7 @@ export function createServer(
 
       // If space does not exist, return default response
       if (!spaceQuery || spaceQuery.length === 0) {
-        console.log("server", `Space ${space} does not exist, returning default pull response`);
+        log("log", `Space ${space} does not exist, returning default pull response`);
         const pullResponse: PullResponse = {
           lastMutationId: 0,
           patches: [],
@@ -214,7 +227,7 @@ export function createServer(
       }
 
       const lastMutationId = Number(spaceQuery[0].last_mutation_id);
-      console.log("server", `Pull response: lastMutationId=${lastMutationId}`);
+      log("log", `Pull response: lastMutationId=${lastMutationId}`);
 
       const patches: Patch[] = (keyValueQuery || []).map((row) => ({
         op: "set",
@@ -253,10 +266,10 @@ export function createServer(
         return createErrorResponse("Invalid mutations in request", 400);
       }
 
-      console.log("server", `Push request: space=${space}, mutations=${body.mutations.length}`);
+      log("log", `Push request: space=${space}, mutations=${body.mutations.length}`);
 
       const localMutationIds = body.mutations.map((mutation) => mutation.id);
-      console.log("server", `Local mutation IDs: ${localMutationIds}`);
+      log("log", `Local mutation IDs: ${localMutationIds}`);
 
       const operations = body.operations;
 
@@ -279,7 +292,7 @@ RETURNING last_mutation_id
         // update key values
         ...operations.map((o) => operationToInstatement(o, space)),
       ]) as [SpaceQueryResult, ...any[]];
-      console.log("server", "update result!!!!", updateLastMutationIdResult);
+      log("log", "update result!!!!", updateLastMutationIdResult);
       const newMutationId = Number(updateLastMutationIdResult?.[0]?.last_mutation_id);
       const patches = operations.map((o) => operationToPatch(o, newMutationId));
 
@@ -288,7 +301,7 @@ RETURNING last_mutation_id
         localMutationIds,
         mutationIds: [newMutationId],
       };
-      console.log("server", "sending poke, mutationIds", pokeResult.mutationIds);
+      log("log", "sending poke, mutationIds", pokeResult.mutationIds);
       await sendPoke(space, pokeResult)
 
       // Return an empty object as per PushResponse type
@@ -296,13 +309,13 @@ RETURNING last_mutation_id
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     } catch (pushError) {
-      console.error("server", "Unexpected error in push endpoint:", pushError);
+      log("error", "Unexpected error in push endpoint:", pushError);
       return createErrorResponse("Unexpected error processing push request", 500);
     }
   }
 
   // Default response for unexpected actions
-  console.warn("server", `Unexpected action: ${action}`);
+  log("error", `Unexpected action: ${action}`);
   return createErrorResponse(`Unsupported action: ${action}`, 400);
 }
 }

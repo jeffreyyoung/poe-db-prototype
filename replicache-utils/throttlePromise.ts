@@ -1,7 +1,7 @@
 import { Deferred } from "./network/Deferred.ts";
 import { sleep } from "./sleep.ts";
 
-type ThrottledPromiseFn<T> = (() => Promise<T | null>) & { getCurrentPromise: () => Promise<T> | null }
+type ThrottledPromiseFn<T> = (() => Promise<T | null>) & { done: () => Promise<unknown> | null }
 
 export function throttle<T>(func: () => Promise<T>, ms: number): ThrottledPromiseFn<T> {
     let currentPromise: Promise<T> | null = null;
@@ -24,7 +24,7 @@ export function throttle<T>(func: () => Promise<T>, ms: number): ThrottledPromis
 
       return currentPromise;
     }, {
-        getCurrentPromise: () => currentPromise
+        done: () => currentPromise ?? Promise.resolve()
     });
   }
 
@@ -58,6 +58,18 @@ export function throttleAllowConcurrency<T>(func: () => Promise<T>, ms: number):
 
     return deferred.promise;
   }, {
-    getCurrentPromise: () => calls.at(-1)?.promise ?? null
+    done: () => new Promise((resolve) => {
+      (async () => {
+        try {
+          while (calls.length > 0) {
+            await Promise.allSettled(calls.map(c => c.promise));
+          }
+        } catch (error) {
+          console.error("throttle", "Error in throttled function", error);
+        } finally {
+          resolve(null);
+        }
+      })()
+    })
   });
 }

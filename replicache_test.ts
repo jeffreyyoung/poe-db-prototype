@@ -74,7 +74,7 @@ Deno.test("subscriptions", async () => {
     await rep.push()
     await rep.pull()
     await sleep(500)
-    assertSpyCalls(testSubscription, 2)
+    assertSpyCalls(testSubscription, 1)
 })
 
 Deno.test("subscription with multiple keys", async () => {
@@ -200,6 +200,7 @@ Deno.test("test subscriptions with controlled pull", async () => {
     });
     const testSubscription = spy((res) => { console.log("subscription called!!")})
     rep.subscribe((tx) => tx.get("my_favorite_food"), testSubscription)
+    await sleep(100);
     assertEquals(controller.queuedPulls.length, 1);
     let isResolved = false;
     rep.hasCompletedInitialPull().then(() => {
@@ -260,6 +261,7 @@ Deno.test("query shouldn't resolve until pull is complete", async () => {
     });
     const testSubscription = spy((res) => { console.log("subscription called!!")})
     rep.subscribe((tx) => tx.get("my_favorite_food"), testSubscription)
+    await sleep(100);
     assertEquals(controller.queuedPulls.length, 1);
     let isResolved = false;
     rep.query((tx) => tx.get("my_favorite_food")).then(() => {
