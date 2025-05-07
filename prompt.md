@@ -12,7 +12,7 @@ Before creating the application, carefully consider the following constraints an
 The iframe has a strict CSP that allows loading resources only from specific CDNs and domains. Here's the CSP:
 
 ```
-$preview_url_csp
+default-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://v3.fal.media https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://qph.cf2.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' data: blob: https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self' data: blob:; upgrade-insecure-requests; block-all-mixed-content; report-uri https://www.quora.com/poe_api/csp_report_3RD_PARTY_POST; report-to csp-endpoint;
 ```
 
 If your code violates the CSP, users will see a confirmation modal and can choose to allow additional resources. Accepting this reloads the iframe without CSP restrictions. While this enables more functionality, it also creates a suboptimal user experience. Prefer using allowed CDNs and domains when possible.
