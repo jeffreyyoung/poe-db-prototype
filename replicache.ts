@@ -21,6 +21,7 @@ import type {
 import { hashMutators } from "./replicache-utils/hash.ts";
 import { PokeResult } from "./replicache-utils/server-types.ts";
 import { isTest } from "./replicache-utils/isTest.ts";
+import { getQueryParamSafe } from "./replicache-utils/getQueryParamSafe.ts";
 
 export class Replicache implements ReplicacheType<Record<string, any>> {
   #core: ReplicacheCore;
@@ -55,10 +56,7 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
       this.#doPush.bind(this),
       typeof options.pushDelay === "number" ? options.pushDelay : 50,
     );
-    this.#spaceId = this.options.spaceID || "";
-    if (!this.#spaceId) {
-      this.#spaceId = "space" + hashMutators(this.options.mutators);
-    }
+    this.#spaceId = this.options.spaceID || getQueryParamSafe("spaceID") || "space" + hashMutators(this.options.mutators);
 
     this.#networkClient =
       this.options.networkClient ||
@@ -86,8 +84,6 @@ export class Replicache implements ReplicacheType<Record<string, any>> {
     const b = await this.#core.initialPullPromise;
     return b;
   }
-
-
 
   _handlePokeResult(poke: PokeResult) {
     const { shouldPull, localMutationIds } = this.#core.processPokeResult(poke);

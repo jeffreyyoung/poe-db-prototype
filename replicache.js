@@ -604,6 +604,16 @@ function hashMutators(mutators) {
   return "mutators" + simpleHash(Object.entries(mutators).map(([key, value]) => key + value.toString()).join("_"));
 }
 
+// replicache-utils/getQueryParamSafe.ts
+function getQueryParamSafe(param) {
+  try {
+    const url = new URL(window.location.href);
+    return url.searchParams.get(param);
+  } catch (e) {
+    return null;
+  }
+}
+
 // replicache.ts
 var Replicache = class {
   #core;
@@ -624,10 +634,7 @@ var Replicache = class {
       this.#doPush.bind(this),
       typeof options.pushDelay === "number" ? options.pushDelay : 50
     );
-    this.#spaceId = this.options.spaceID || "";
-    if (!this.#spaceId) {
-      this.#spaceId = "space" + hashMutators(this.options.mutators);
-    }
+    this.#spaceId = this.options.spaceID || getQueryParamSafe("spaceID") || "space" + hashMutators(this.options.mutators);
     this.#networkClient = this.options.networkClient || createValTownNetworkClient({
       baseUrl: this.options.baseUrl || "https://poe-db-prototype.fly.dev"
       // "https://poe-db-653909965599.us-central1.run.app",
